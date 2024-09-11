@@ -1,5 +1,5 @@
 project(
-    'libbicos', 'cpp', 
+    'libBICOS', 'cpp', 
     version: '1.0.0',
     license: 'LGPL-3.0'
 )
@@ -29,7 +29,7 @@ else
 endif
 
 both_libraries(
-    'bicos',
+    'BICOS',
     sources: srcs,
     include_directories: include_directories('include'),
     dependencies: [
@@ -42,5 +42,5 @@ both_libraries(
 install_headers(
     'include/config.hpp', 
     'include/match.hpp', 
-    subdir: 'bicos'
+    subdir: 'BICOS'
 )

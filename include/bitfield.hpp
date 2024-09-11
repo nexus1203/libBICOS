@@ -1,6 +1,6 @@
 #pragma once
 
-namespace bicos::impl {
+namespace BICOS::impl {
 
 template<typename T>
 struct Bitfield {

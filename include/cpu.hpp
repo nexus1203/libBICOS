@@ -4,7 +4,7 @@
 
 #include "config.hpp"
 
-namespace bicos::impl {
+namespace BICOS::impl {
 
 void match_cpu(
     const std::vector<cv::Mat>& stack0,

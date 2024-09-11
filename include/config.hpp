@@ -4,7 +4,7 @@
 #include <limits>
 #include <opencv2/core.hpp>
 
-namespace bicos {
+namespace BICOS {
 
 using disparity_t = float;
 using uint128_t = __uint128_t;

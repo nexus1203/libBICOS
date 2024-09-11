@@ -7,7 +7,7 @@
 
 #define STR(s) #s
 
-namespace bicos::impl {
+namespace BICOS::impl {
 
 template<typename T>
 static double nxcorr(const T* pix0, const T* pix1, size_t n) {

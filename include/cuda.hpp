@@ -2,7 +2,7 @@
 
 #include "config.hpp"
 
-namespace bicos::impl {
+namespace BICOS::impl {
 
 void match_gpu(
     const std::vector<cv::cuda::GpuMat>& _stack0,

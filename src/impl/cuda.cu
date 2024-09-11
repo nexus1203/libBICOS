@@ -1,6 +1,6 @@
 #include "cuda.hpp"
 
-namespace bicos {
+namespace BICOS {
 
 void match_gpu(
     const std::vector<cv::cuda::GpuMat>& _stack0,

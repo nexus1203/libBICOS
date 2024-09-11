@@ -4,7 +4,7 @@
 
 #include "config.hpp"
 
-namespace bicos {
+namespace BICOS {
 
 void match(
     const std::vector<cv::Mat>& stack0,

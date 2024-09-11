@@ -7,7 +7,7 @@
 #   include "cuda.hpp"
 #endif
 
-namespace bicos {
+namespace BICOS {
 
 using namespace impl;
 
