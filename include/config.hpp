@@ -7,7 +7,7 @@
 namespace BICOS {
 
 using disparity_t = float;
-using uint128_t = __uint128_t;
+using uint128_t   = __uint128_t;
 
 constexpr disparity_t INVALID_DISP = std::numeric_limits<disparity_t>::quiet_NaN();
 

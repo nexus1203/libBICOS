@@ -1,7 +1,7 @@
 project(
     'libBICOS', 'cpp', 
     version: '1.0.0',
-    license: 'LGPL-3.0'
+    license: 'LGPL-3.0-or-later'
 )
 
 impl = get_option('implementation')
