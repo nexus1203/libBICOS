@@ -1,0 +1,1 @@
+option('implementation', type: 'combo', choices: ['cpu', 'cuda'], description: 'Choose the implementation to use')
