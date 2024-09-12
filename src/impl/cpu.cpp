@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <format>
 
 #include "bitfield.hpp"
@@ -53,7 +54,7 @@ static void agree_cpu(
             for (int col = 0; col < sz.width; ++col) {
                 const int16_t d = raw_row.at<int16_t>(col);
 
-                if (d == INVALID_DISP)
+                if (d == INVALID_DISP_<int16_t>)
                     continue;
 
                 const int idx1 = col - d;
@@ -96,7 +97,7 @@ static void agree_cpu_subpixel(
             for (int col = 0; col < sz.width; ++col) {
                 const int16_t d = raw_row.at<int16_t>(col);
 
-                if (d == INVALID_DISP)
+                if (d == INVALID_DISP_<int16_t>)
                     continue;
 
                 const int idx1 = col - d;
@@ -136,7 +137,7 @@ static void agree_cpu_subpixel(
 
                     // clang-format on
 
-                    float best_x;
+                    float best_x = 0.0f;
                     double best_nxcorr = -1.0;
 
                     for (float x = -1.0f; x <= 1.0f; x += subpixel_step) {
@@ -154,7 +155,7 @@ static void agree_cpu_subpixel(
                     if (best_nxcorr < nxcorr_threshold)
                         continue;
 
-                    ret_row.at<disparity_t>(col) = d - best_x;
+                    ret_row.at<disparity_t>(col) = d + best_x;
                 }
             }
         }
@@ -174,12 +175,13 @@ int ham(uint128_t a, uint128_t b) {
 }
 
 template<typename TDescriptor>
-static cv::Mat1s disparity_cpu(
+static cv::Mat1s bicos(
     const std::unique_ptr<StepBuf<TDescriptor>>& desc0,
     const std::unique_ptr<StepBuf<TDescriptor>>& desc1,
     cv::Size sz
 ) {
     cv::Mat1s ret(sz);
+    ret.setTo(INVALID_DISP_<int16_t>);
 
     cv::parallel_for_(cv::Range(0, ret.rows), [&](const cv::Range& r) {
         for (int row = r.start; row < r.end; ++row) {
@@ -204,8 +206,10 @@ static cv::Mat1s disparity_cpu(
                     }
                 }
 
-                ret(row, col0) =
-                    0 < num_duplicate_minima ? INVALID_DISP : std::abs(col0 - best_col1);
+                if (0 < num_duplicate_minima)
+                    continue;
+
+                ret(row, col0) = std::abs(col0 - best_col1);
             }
         }
     });
@@ -309,24 +313,24 @@ void match_cpu(
                  descriptor_transform<matdepth, descdepth>(stack0, img_size, n_images, cfg.mode), \
              desc1 = \
                  descriptor_transform<matdepth, descdepth>(stack1, img_size, n_images, cfg.mode); \
-        raw_disp = disparity_cpu(desc0, desc1, img_size); \
+        raw_disp = bicos(desc0, desc1, img_size); \
     } while (0)
 
     switch (required_bits) {
         case 0 ... 32:
-            if (depth == CV_8UC1)
+            if (depth == CV_8U)
                 TRANSFORM_COMPUTE(uint8_t, uint32_t);
             else
                 TRANSFORM_COMPUTE(uint16_t, uint32_t);
             break;
         case 33 ... 64:
-            if (depth == CV_8UC1)
+            if (depth == CV_8U)
                 TRANSFORM_COMPUTE(uint8_t, uint64_t);
             else
                 TRANSFORM_COMPUTE(uint16_t, uint64_t);
             break;
         case 65 ... 128:
-            if (depth == CV_8UC1)
+            if (depth == CV_8U)
                 TRANSFORM_COMPUTE(uint8_t, uint128_t);
             else
                 TRANSFORM_COMPUTE(uint16_t, uint128_t);

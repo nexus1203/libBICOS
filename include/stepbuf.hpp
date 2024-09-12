@@ -2,30 +2,48 @@
 
 #include <opencv2/core.hpp>
 
-namespace BICOS {
+#if defined( BICOS_CUDA )
+#   include <opencv2/core/cuda/common.hpp>
+#endif
+
+#ifdef __CUDACC__
+#define LOCATION __host__ __device__ __forceinline__
+#else
+#define LOCATION
+#endif
+
+namespace BICOS::impl {
 
 template<typename T>
 class StepBuf {
 private:
     T* _ptr;
-    int _step;
+    size_t _step;
 
 public:
     StepBuf(cv::Size size) {
+#if defined( BICOS_CPU )
         _step = size.width;
         _ptr = new T[size.area()];
+#elif defined( BICOS_CUDA )
+        cudaSafeCall(cudaMallocPitch((void**)&_ptr, &_step, size.width * sizeof(T), size.height));
+#endif
     }
     ~StepBuf() {
+#if defined( BICOS_CPU )
         delete[] _ptr;
+#elif defined( BICOS_CUDA )
+        cudaFree(_ptr);
+#endif
     }
 
     StepBuf(const StepBuf&) = delete;
     StepBuf& operator=(const StepBuf&) = delete;
 
-    T* row(int i) {
+    LOCATION T* row(int i) {
         return _ptr + i * _step;
     }
-    const T* row(int i) const {
+    LOCATION const T* row(int i) const {
         return _ptr + i * _step;
     }
 };

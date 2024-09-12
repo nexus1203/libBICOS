@@ -5,9 +5,9 @@ project(
 )
 
 impl = get_option('implementation')
-srcs = files(
-    'src/lib.cpp'
-)
+srcs = files('src/lib.cpp')
+incls = include_directories('include')
+deps = [dependency('opencv4')]
 
 if get_option('buildtype') in ['debug', 'debugoptimized']
     add_project_arguments('-DBICOS_DEBUG', language: 'cpp')
@@ -28,14 +28,22 @@ else
     error('unsupported implementation')
 endif
 
-both_libraries(
+libs = both_libraries(
     'BICOS',
     sources: srcs,
-    include_directories: include_directories('include'),
-    dependencies: [
-        dependency('opencv4')
-    ],
+    include_directories: incls,
+    dependencies: deps,
     install: true,
+    override_options: ['cpp_std=c++20'],
+)
+
+executable(
+    'bicos-cli',
+    sources: 'src/cli.cpp',
+    include_directories: incls,
+    dependencies: deps,
+    link_with: libs,
+    install: false,
     override_options: ['cpp_std=c++20'],
 )
 

@@ -1,30 +1,30 @@
 #pragma once
 
-#include <optional>
 #include <limits>
 #include <opencv2/core.hpp>
+#include <optional>
 
 namespace BICOS {
 
 using disparity_t = float;
-using uint128_t   = __uint128_t;
+using uint128_t = __uint128_t;
 
-constexpr disparity_t INVALID_DISP = std::numeric_limits<disparity_t>::quiet_NaN();
+template<typename T>
+constexpr T INVALID_DISP_ =
+    std::numeric_limits<T>::has_quiet_NaN ? std::numeric_limits<T>::quiet_NaN() : (T)-1;
+constexpr disparity_t INVALID_DISP = INVALID_DISP_<disparity_t>;
 
-#if defined( BICOS_CPU )
-using InputImage  = cv::Mat;
+#if defined(BICOS_CPU)
+using InputImage = cv::Mat;
 using OutputImage = cv::Mat_<disparity_t>;
-#elif defined( BICOS_CUDA )
-using InputImage  = cv::cuda::GpuMat;
+#elif defined(BICOS_CUDA)
+using InputImage = cv::cuda::GpuMat;
 using OutputImage = cv::cuda::GpuMat;
 #else
-#   error "unimplemented"
+    #error "unimplemented"
 #endif
 
-enum class TransformMode {
-    LIMITED,
-    FULL
-};
+enum class TransformMode { LIMITED, FULL };
 
 struct Config {
     double nxcorr_thresh;
@@ -32,4 +32,4 @@ struct Config {
     TransformMode mode;
 };
 
-} // namespace bicos
+} // namespace BICOS
