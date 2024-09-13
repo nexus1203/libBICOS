@@ -1,69 +1,17 @@
 #include <filesystem>
 #include <iostream>
-#include <format>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+#include <optional>
+
+#if defined( BICOS_CUDA )
+#   include <opencv2/core/cuda.hpp>
+#endif
 
 #include "match.hpp"
+#include "fileutils.hpp"
 
-struct SequenceEntry {
-    size_t idx;
-    cv::Mat m;
-
-    bool operator<(const SequenceEntry& rhs) const {
-        return idx < rhs.idx;
-    }
-};
-
-void save_disparity(const cv::Mat_<BICOS::disparity_t>& disparity, const std::string& name) {
-    cv::Mat normalized, colorized;
-
-    std::filesystem::path outfile = "/tmp/" + name;
-
-    cv::normalize(disparity, normalized, 0, 255, cv::NORM_MINMAX, CV_8UC1);
-    normalized.setTo(0, disparity == -1);
-    cv::applyColorMap(normalized, colorized, cv::COLORMAP_TURBO);
-
-    if (!cv::imwrite(outfile.replace_extension("png"), colorized)) {
-        std::cerr << "Could not save image!" << std::endl;
-    }
-}
-
-void read_sequence(
-    const std::filesystem::path& image_dir,
-    std::vector<SequenceEntry>& lseq,
-    std::vector<SequenceEntry>& rseq,
-    bool force_grayscale
-) {
-    namespace fs = std::filesystem;
-
-    for (auto const& entry: fs::directory_iterator(image_dir)) {
-        const fs::path path = entry.path();
-        const std::string fname = path.filename().string();
-        if (std::string::npos == fname.find("_")) {
-            std::cerr << "Ignoring file: " << fname << std::endl;
-            continue;
-        }
-
-        auto idx = stoul(fname);
-        cv::Mat m = cv::imread(path, force_grayscale ? cv::IMREAD_GRAYSCALE : cv::IMREAD_UNCHANGED);
-        if (4 == m.channels()) {
-            cv::Mat no_alpha;
-            cv::cvtColor(m, no_alpha, cv::COLOR_BGRA2BGR);
-            m = no_alpha;
-        }
-
-        auto& sequence = std::string::npos != fname.find("_left") ? lseq : rseq;
-
-        sequence.push_back((SequenceEntry) { idx, m });
-    }
-
-    if (lseq.size() != rseq.size()) {
-        throw std::invalid_argument(
-            std::format("Unequal number of images; left: {}, right: {}", lseq.size(), rseq.size())
-        );
-    }
-}
+using namespace BICOS;
 
 int main(int argc, char const * const * argv) {
     std::filesystem::path folder = argc == 2 ? argv[1] : "../data";
@@ -73,6 +21,8 @@ int main(int argc, char const * const * argv) {
         std::vector<SequenceEntry> lseq, rseq;
 
         read_sequence(folder, lseq, rseq, true);
+
+        std::cout << "loaded " << lseq.size() + rseq.size() << " images\n";
 
         sort(lseq.begin(), lseq.end());
         sort(rseq.begin(), rseq.end());
@@ -88,9 +38,28 @@ int main(int argc, char const * const * argv) {
 
     BICOS::Config c;
     c.nxcorr_thresh = 0.5;
-    c.subpixel_step = 0.2;
+    c.subpixel_step = std::nullopt;
+
+#if defined( BICOS_CUDA )
+
+    std::vector<cv::cuda::GpuMat> lstack_gpu, rstack_gpu;
+    lstack_gpu.resize(lstack.size());
+    rstack_gpu.resize(rstack.size());
+
+    std::transform(lstack.begin(), lstack.end(), lstack_gpu.begin(), [](const cv::Mat& m) { return cv::cuda::GpuMat(m); });
+    std::transform(rstack.begin(), rstack.end(), rstack_gpu.begin(), [](const cv::Mat& m) { return cv::cuda::GpuMat(m); });
+
+    cv::cuda::GpuMat disp_gpu;
+
+    BICOS::match(lstack_gpu, rstack_gpu, disp_gpu, c);
+
+    disp_gpu.download(disp);
+
+#else
 
     BICOS::match(lstack, rstack, disp, c);
+
+#endif    
 
     save_disparity(disp, "example");
 }

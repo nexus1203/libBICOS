@@ -2,7 +2,7 @@
 
 #include <opencv2/core.hpp>
 
-#if defined( BICOS_CUDA )
+#if defined( BICOS_CUDA ) && defined( __CUDACC__ )
 #   include <opencv2/core/cuda/common.hpp>
 #endif
 
@@ -27,6 +27,7 @@ public:
         _ptr = new T[size.area()];
 #elif defined( BICOS_CUDA )
         cudaSafeCall(cudaMallocPitch((void**)&_ptr, &_step, size.width * sizeof(T), size.height));
+        _step /= sizeof(T);
 #endif
     }
     ~StepBuf() {

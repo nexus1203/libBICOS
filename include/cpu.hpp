@@ -4,9 +4,9 @@
 
 #include "config.hpp"
 
-namespace BICOS::impl {
+namespace BICOS::impl::cpu {
 
-void match_cpu(
+void match(
     const std::vector<cv::Mat>& stack0,
     const std::vector<cv::Mat>& stack1,
     cv::Mat_<disparity_t>& disparity,

@@ -14,10 +14,10 @@ constexpr T INVALID_DISP_ =
     std::numeric_limits<T>::has_quiet_NaN ? std::numeric_limits<T>::quiet_NaN() : (T)-1;
 constexpr disparity_t INVALID_DISP = INVALID_DISP_<disparity_t>;
 
-#if defined(BICOS_CPU)
+#if defined( BICOS_CPU )
 using InputImage = cv::Mat;
 using OutputImage = cv::Mat_<disparity_t>;
-#elif defined(BICOS_CUDA)
+#elif defined( BICOS_CUDA )
 using InputImage = cv::cuda::GpuMat;
 using OutputImage = cv::cuda::GpuMat;
 #else

@@ -1,5 +1,4 @@
 #include "config.hpp"
-#include "match.hpp"
 
 #if defined( BICOS_CPU )
 #   include "cpu.hpp"
@@ -21,9 +20,9 @@ void match(
 #endif
 ) {
 #if defined( BICOS_CPU )
-    match_cpu(stack0, stack1, disparity, cfg);
+    cpu::match(stack0, stack1, disparity, cfg);
 #elif defined( BICOS_CUDA )
-    match_cuda(stack0, stack1, disparity, cfg, stream);
+    cuda::match(stack0, stack1, disparity, cfg, stream);
 #else
 #   error "undefined implementation"
 #endif

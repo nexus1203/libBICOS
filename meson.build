@@ -1,8 +1,4 @@
-project(
-    'libBICOS', 'cpp', 
-    version: '1.0.0',
-    license: 'LGPL-3.0-or-later'
-)
+project('libBICOS', 'cpp', version: '1.0.0', license: 'LGPL-3.0-or-later')
 
 impl = get_option('implementation')
 srcs = files('src/lib.cpp')
@@ -10,7 +6,7 @@ incls = include_directories('include')
 deps = [dependency('opencv4')]
 
 if get_option('buildtype') in ['debug', 'debugoptimized']
-    add_project_arguments('-DBICOS_DEBUG', language: 'cpp')
+    add_project_arguments('-DBICOS_DEBUG', language: ['cpp', 'cuda'])
 endif
 
 # complaints about opencv inlines
@@ -21,8 +17,7 @@ if impl == 'cpu'
     srcs += files('src/impl/cpu.cpp')
 elif impl == 'cuda'
     add_languages('cuda')
-    add_project_arguments('-DBICOS_CUDA', language: 'cpp')
-    add_project_arguments('-DBICOS_CUDA', language: 'cuda')
+    add_project_arguments('-DBICOS_CUDA', language: ['cpp', 'cuda'])
     srcs += files('src/impl/cuda.cu')
 else
     error('unsupported implementation')
@@ -39,7 +34,7 @@ libs = both_libraries(
 
 executable(
     'bicos-cli',
-    sources: 'src/cli.cpp',
+    sources: ['src/cli.cpp', 'src/fileutils.cpp'],
     include_directories: incls,
     dependencies: deps,
     link_with: libs,
@@ -47,8 +42,24 @@ executable(
     override_options: ['cpp_std=c++20'],
 )
 
-install_headers(
-    'include/config.hpp', 
-    'include/match.hpp', 
-    subdir: 'BICOS'
-)
+if impl == 'cuda'
+    test(
+        'descriptor_transform',
+        executable(
+            'test_descriptor_transform',
+            sources: [
+                'test/descriptor_transform.cu',
+                'src/impl/cuda.cu',
+                'src/impl/cpu.cpp',
+                'src/fileutils.cpp',
+            ],
+            dependencies: deps,
+            include_directories: incls,
+            cuda_args: '-DBICOS_CUDA',
+            cpp_args: '-DBICOS_CPU',
+            override_options: ['cpp_std=c++20'],
+        ),
+    )
+endif
+
+install_headers('include/config.hpp', 'include/match.hpp', subdir: 'BICOS')
