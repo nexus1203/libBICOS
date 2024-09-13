@@ -57,4 +57,37 @@ void read_sequence(
     }
 }
 
+void sort_sequence_to_stack(
+    std::vector<SequenceEntry> lin,
+    std::vector<SequenceEntry> rin,
+    std::vector<cv::Mat>& lout,
+    std::vector<cv::Mat>& rout
+) {
+    std::sort(lin.begin(), lin.end());
+    std::sort(rin.begin(), rin.end());
+
+    lout.resize(lin.size());
+    rout.resize(rin.size());
+
+    std::transform(lin.begin(), lin.end(), lout.begin(), [](const SequenceEntry& e) {
+        return e.m;
+    });
+    std::transform(rin.begin(), rin.end(), rout.begin(), [](const SequenceEntry& e) {
+        return e.m;
+    });
+}
+
+void matvec_to_gpu(
+    const std::vector<cv::Mat>& lin,
+    const std::vector<cv::Mat>& rin,
+    std::vector<cv::cuda::GpuMat>& lout,
+    std::vector<cv::cuda::GpuMat>& rout
+) {
+    lout.resize(lin.size());
+    rout.resize(rin.size());
+
+    std::transform(lin.begin(), lin.end(), lout.begin(), [](const cv::Mat& m) { return cv::cuda::GpuMat(m); });
+    std::transform(rin.begin(), rin.end(), rout.begin(), [](const cv::Mat& m) { return cv::cuda::GpuMat(m); });
+}
+
 } // namespace BICOS

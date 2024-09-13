@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../util.hpp"
 #include "config.hpp"
+#include "impl/util.hpp"
 
 namespace BICOS::impl::cuda {
 
@@ -162,4 +162,4 @@ __global__ void agree_subpixel_kernel(
     }
 }
 
-} // namespace BICOS::impl
+} // namespace BICOS::impl::cuda

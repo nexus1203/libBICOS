@@ -1,8 +1,8 @@
 #pragma once
 
-#include "stepbuf.hpp"
 #include "bitfield.hpp"
-#include "../util.hpp"
+#include "impl/util.hpp"
+#include "stepbuf.hpp"
 
 namespace BICOS::impl::cuda {
 
@@ -23,19 +23,17 @@ __global__ void descriptor_transform_kernel(
 
     // caching necessary?
 
-    TInput *pix = STACKALLOC(n, TInput);
+    TInput pix[33];
+    // TInput* pix = new TInput[n];//STACKALLOC(n, TInput);
     //TInput* pix = ((TInput*)timeseries) + n * threadIdx.x;
     Bitfield<TDescriptor> bf;
 
+    double av = 0.0f;
     for (size_t i = 0; i < n; ++i)
-        pix[i] = stacks[i](y, x);
+        av += pix[i] = stacks[i](y, x);
+    av /= double(n);
 
     //__syncthreads();
-
-    float av = 0.0f;
-    for (size_t t = 0; t < n; ++t)
-        av += pix[t];
-    av /= float(n);
 
     // clang-format off
 
@@ -52,12 +50,11 @@ __global__ void descriptor_transform_kernel(
         int& prev_pair_sum = prev_pair_sums[t % 2],
              current_sum   = a + b;
 
-        if (-1 == prev_pair_sum) {
-            prev_pair_sum = a + b;
-        } else {
+        if (-1 != prev_pair_sum) {
             bf.set(prev_pair_sum < current_sum);
-            prev_pair_sum = current_sum;
         }
+
+        prev_pair_sum = current_sum;
     }
 
     const TInput a = pix[n - 2],
@@ -73,4 +70,4 @@ __global__ void descriptor_transform_kernel(
     out->row(y)[x] = bf.get();
 }
 
-}
+} // namespace BICOS::impl::cuda

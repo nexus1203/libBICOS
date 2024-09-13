@@ -5,8 +5,6 @@
 #include "impl/cuda/bicos.cuh"
 #include "impl/cuda/descriptor_transform.cuh"
 
-#include "stepbuf.hpp"
-
 #include <cstdint>
 #include <opencv2/core.hpp>
 #include <opencv2/core/cuda.hpp>
@@ -15,7 +13,7 @@
 
 namespace BICOS::impl::cuda {
 
-static dim3 create_grid(dim3 block, cv::Size sz) {
+dim3 create_grid(dim3 block, cv::Size sz) {
     return dim3(
         cv::cuda::device::divUp(sz.width, block.x),
         cv::cuda::device::divUp(sz.height, block.y)
@@ -51,7 +49,7 @@ static void match_impl(
     auto descr0 = std::make_unique<StepBuf<TDescriptor>>(sz),
          descr1 = std::make_unique<StepBuf<TDescriptor>>(sz);
 
-    StepBuf<TDescriptor>*descr0_dev, *descr1_dev;
+    StepBuf<TDescriptor> *descr0_dev, *descr1_dev;
 
     cudaSafeCall(cudaHostRegister(descr0.get(), sizeof(StepBuf<TDescriptor>), 0));
     cudaSafeCall(cudaHostRegister(descr1.get(), sizeof(StepBuf<TDescriptor>), 0));
@@ -254,4 +252,4 @@ void match(
     }
 }
 
-} // namespace BICOS::impl
+} // namespace BICOS::impl::cuda

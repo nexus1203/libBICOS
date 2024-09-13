@@ -11,31 +11,30 @@ static TDescirptor build_descriptor(const TInput* pix, size_t n) {
     Bitfield<TDescirptor> bf;
 
     double av = 0.0;
-    for (size_t i = 0; i < n; ++i)
-        av += pix[i];
+    for (size_t t = 0; t < n; ++t)
+        av += pix[t];
     av /= double(n);
 
     // clang-format off
 
     int prev_pair_sums[] = { -1, -1 };
-    for (size_t i = 0; i < n - 2; ++i) {
-        const TInput a = pix[i + 0],
-                     b = pix[i + 1],
-                     c = pix[i + 2];
+    for (size_t t = 0; t < n - 2; ++t) {
+        const TInput a = pix[t + 0],
+                     b = pix[t + 1],
+                     c = pix[t + 2];
         
         bf.set(a < b);
         bf.set(a < c);
         bf.set(a < av);
 
-        int& prev_pair_sum = prev_pair_sums[i % 2],
+        int& prev_pair_sum = prev_pair_sums[t % 2],
              current_sum   = a + b;
 
-        if (-1 == prev_pair_sum) {
-            prev_pair_sum = a + b;
-        } else {
+        if (-1 != prev_pair_sum) {
             bf.set(prev_pair_sum < current_sum);
-            prev_pair_sum = current_sum;
         }
+
+        prev_pair_sum = current_sum;
     }
 
     const TInput a = pix[n - 2],
@@ -57,13 +56,10 @@ descriptor_transform(const cv::Mat& s, cv::Size sz, size_t n, TransformMode m) {
     auto descriptors = std::make_unique<StepBuf<TDescriptor>>(sz);
 
     cv::parallel_for_(cv::Range(0, sz.height), [&](const cv::Range& range) {
-        for (int row = range.start; row < range.end; ++row) {
-            TDescriptor* descrow = descriptors->row(row);
-            for (int col = 0; col < sz.width; ++col) {
-                const TInput* pix = s.ptr<TInput>(row, col);
-                descrow[col] = build_descriptor<TInput, TDescriptor>(pix, n);
-            }
-        }
+        for (int row = range.start; row < range.end; ++row)
+            for (int col = 0; col < sz.width; ++col)
+                descriptors->row(row)[col] =
+                    build_descriptor<TInput, TDescriptor>(s.ptr<TInput>(row, col), n);
     });
 
     return descriptors;

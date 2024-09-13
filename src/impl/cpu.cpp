@@ -1,10 +1,8 @@
 #include <cstdint>
 #include <format>
 
-#include "bitfield.hpp"
 #include "config.hpp"
 #include "cpu.hpp"
-#include "stepbuf.hpp"
 
 #include "impl/cpu/agree.hpp"
 #include "impl/cpu/bicos.hpp"
@@ -91,4 +89,4 @@ void match(
     // clang-format on
 }
 
-} // namespace BICOS::impl
+} // namespace BICOS::impl::cpu
