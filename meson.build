@@ -62,6 +62,23 @@ if impl == 'cuda'
                 )
             )
         endforeach
+        foreach agree_cfg : [0, 1]
+            if agree_cfg == 1
+                testname = f'agree_subpixel_@input_depth@'
+            else
+                testname = f'agree_@input_depth@'
+            endif
+            test(testname,
+                executable('test_' + testname,
+                    sources: srcs + f'test/agree.cu',
+                    dependencies: deps,
+                    include_directories: incls,
+                    cuda_args: ['-DBICOS_CUDA', f'-DINPUT_TYPE=uint@input_depth@_t', f'-DTEST_SUBPIXEL=@agree_cfg@'],
+                    cpp_args: '-DBICOS_CPU',
+                    override_options: ['cpp_std=c++20', 'cuda_std=c++20']
+                )
+            )
+        endforeach
     endforeach
 
     foreach descriptor_depth : [32, 64, 128]
@@ -77,7 +94,19 @@ if impl == 'cuda'
             )
         )
     endforeach
-endif
 
+    test('integration',
+        executable('test_integration',
+            sources: srcs + 'test/integration.cu',
+            dependencies: deps,
+            include_directories: incls,
+            cuda_args: '-DBICOS_CUDA',
+            cpp_args: '-DBICOS_CPU',
+            override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
+        ),
+        args: [datdir],
+        timeout: 150
+    )
+endif
 
 install_headers('include/config.hpp', 'include/match.hpp', subdir: 'BICOS')

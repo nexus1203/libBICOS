@@ -3,6 +3,8 @@
 #include "config.hpp"
 #include "impl/util.hpp"
 
+#include <opencv2/core/cuda/common.hpp>
+
 namespace BICOS::impl::cuda {
 
 template<typename T>
@@ -51,11 +53,15 @@ __global__ void agree_kernel(
         return;
     }
 
-    TInput *pix0 = STACKALLOC(n, TInput), *pix1 = STACKALLOC(n, TInput);
+    TInput pix0[33], pix1[33];
 
     for (size_t t = 0; t < n; ++t) {
         pix0[t] = stacks[t](y, x);
         pix1[t] = stacks[n + t](y, x);
+#ifdef BICOS_DEBUG
+        if (t >= 33)
+            __trap();
+#endif
     }
 
     double nxc = nxcorr(pix0, pix1, n);
@@ -112,13 +118,17 @@ __global__ void agree_subpixel_kernel(
     if (idx1 < 0 || sz.width <= idx1)
         return;
 
-    TInput *pix0 = STACKALLOC(n, TInput), *pix1 = STACKALLOC(n, TInput);
+    TInput pix0[33], pix1[33];
 
     const cv::cuda::PtrStepSz<TInput>*stack0 = stacks, *stack1 = stacks + n;
 
     for (size_t t = 0; t < n; ++t) {
         pix0[t] = stack0[t](y, x);
         pix1[t] = stack1[t](y, x);
+#ifdef BICOS_DEBUG
+        if (t >= 33)
+            __trap();
+#endif
     }
 
     if (idx1 == 0 || idx1 == sz.width - 1) {
@@ -129,8 +139,8 @@ __global__ void agree_subpixel_kernel(
 
         out(y, x) = d0;
     } else {
-        TInput* interp = STACKALLOC(n, TInput);
-        float *a = STACKALLOC(n, float), *b = STACKALLOC(n, float), *c = STACKALLOC(n, float);
+        TInput interp[33];
+        float a[33], b[33], c[33];
 
         for (size_t t = 0; t < n; ++t) {
             TInput y0 = stack1[t](y, idx1 - 1), y1 = pix1[t], y2 = stack1[t](y, idx1 + 1);

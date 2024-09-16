@@ -116,6 +116,7 @@ static void match_impl(
     /* nxcorr */
 
     out.create(sz, cv::DataType<disparity_t>::type);
+    out.setTo(INVALID_DISP);
 
     // smem_size = sz.width * n_images * sizeof(TInput);
 

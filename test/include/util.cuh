@@ -3,8 +3,11 @@
 #include <climits>
 #include <opencv2/core/cuda/common.hpp>
 #include <random>
+#include <iostream>
+#include <format>
 
 #include "stepbuf.hpp"
+#include "config.hpp"
 
 namespace BICOS::test {
 
@@ -64,6 +67,13 @@ dim3 create_grid(dim3 block, cv::Size sz) {
         cv::cuda::device::divUp(sz.width, block.x),
         cv::cuda::device::divUp(sz.height, block.y)
     );
+}
+
+template <typename T>
+T randreal(T from, T to) {
+    static thread_local std::random_device dev;
+    std::uniform_real_distribution<T> dist(from, to);
+    return dist(dev);
 }
 
 } // namespace BICOS::test

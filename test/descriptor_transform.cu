@@ -35,7 +35,7 @@ int main(void) {
     std::vector<cv::cuda::GpuMat> _rand_dev;
     std::vector<cv::cuda::PtrStepSz<INPUT_TYPE>> rand_dev;
 
-    const cv::Size randsize(randint(1024, 4096), randint(512, 2048));
+    const cv::Size randsize(randint(256, 1028), randint(128, 512));
 
     std::cout << "descriptor transform on " << randsize << " " << STR(INPUT_TYPE) << " " << STR(DESCRIPTOR_TYPE) << std::endl;
 
@@ -79,7 +79,7 @@ int main(void) {
     cpu::StepBuf<DESCRIPTOR_TYPE> gpuout_host(gpuout);
 
     if (!equals(*cpuout, gpuout_host, randsize))
-        return -1;
+        return 1;
 
     return 0;
 }

@@ -77,14 +77,14 @@ void match(
 
     if (cfg.subpixel_step.has_value())
         if (depth == CV_8UC1)
-            agree_cpu_subpixel<uint8_t>(raw_disp, stack0, stack1, n_images, cfg.nxcorr_thresh, cfg.subpixel_step.value(), disparity);
+            agree_subpixel<uint8_t>(raw_disp, stack0, stack1, n_images, cfg.nxcorr_thresh, cfg.subpixel_step.value(), disparity);
         else
-            agree_cpu_subpixel<uint16_t>(raw_disp, stack0, stack1, n_images, cfg.nxcorr_thresh, cfg.subpixel_step.value(), disparity);
+            agree_subpixel<uint16_t>(raw_disp, stack0, stack1, n_images, cfg.nxcorr_thresh, cfg.subpixel_step.value(), disparity);
     else
         if (depth == CV_8UC1)
-            agree_cpu<uint8_t>(raw_disp, stack0, stack1, n_images, cfg.nxcorr_thresh, disparity);
+            agree<uint8_t>(raw_disp, stack0, stack1, n_images, cfg.nxcorr_thresh, disparity);
         else
-            agree_cpu<uint16_t>(raw_disp, stack0, stack1, n_images, cfg.nxcorr_thresh, disparity);
+            agree<uint16_t>(raw_disp, stack0, stack1, n_images, cfg.nxcorr_thresh, disparity);
 
     // clang-format on
 }

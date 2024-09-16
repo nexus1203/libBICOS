@@ -27,7 +27,7 @@ static double nxcorr(const T* pix0, const T* pix1, size_t n) {
 }
 
 template<typename TInput>
-static void agree_cpu(
+static void agree(
     const cv::Mat1s& raw_disp,
     const cv::Mat& stack0,
     const cv::Mat& stack1,
@@ -69,7 +69,7 @@ static void agree_cpu(
 }
 
 template<typename TInput>
-static void agree_cpu_subpixel(
+static void agree_subpixel(
     const cv::Mat1s& raw_disp,
     const cv::Mat& stack0,
     const cv::Mat& stack1,

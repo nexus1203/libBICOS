@@ -58,7 +58,7 @@ int main(void) {
     disp_dev.download(devout);
 
     if (!equals(disp, devout)) {
-        return -1;
+        return 1;
     }
 
     return 0;
