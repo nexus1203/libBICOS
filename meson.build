@@ -47,85 +47,28 @@ if impl == 'cuda'
     datdir = join_paths(meson.project_source_root(), 'data')
     srcs = files('src/impl/cuda.cu', 'src/impl/cpu.cpp', 'src/fileutils.cpp')
     incls = [incls, include_directories('test/include')]
-    
-    test(
-        'descriptor_transform_8_32',
-        executable(
-            'test_descriptor_transform_8_32',
-            sources: srcs + 'test/descriptor_transform.cu',
-            dependencies: deps,
-            include_directories: incls,
-            cuda_args: ['-DBICOS_CUDA', '-DINPUT_TYPE=uint8_t', '-DDESCRIPTOR_TYPE=uint32_t'],
-            cpp_args: '-DBICOS_CPU',
-            override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
-        ),
-        args: [datdir]
-    )
-    test(
-        'descriptor_transform_8_64',
-        executable(
-            'test_descriptor_transform_8_64',
-            sources: srcs + 'test/descriptor_transform.cu',
-            dependencies: deps,
-            include_directories: incls,
-            cuda_args: ['-DBICOS_CUDA', '-DINPUT_TYPE=uint8_t', '-DDESCRIPTOR_TYPE=uint64_t'],
-            cpp_args: '-DBICOS_CPU',
-            override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
-        ),
-        args: [datdir]
-    )
-    test(
-        'descriptor_transform_8_128',
-        executable(
-            'test_descriptor_transform_8_128',
-            sources: srcs + 'test/descriptor_transform.cu',
-            dependencies: deps,
-            include_directories: incls,
-            cuda_args: ['-DBICOS_CUDA', '-DINPUT_TYPE=uint8_t', '-DDESCRIPTOR_TYPE=uint128_t'],
-            cpp_args: '-DBICOS_CPU',
-            override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
-        ),
-        args: [datdir]
-    )
-    test(
-        'descriptor_transform_16_32',
-        executable(
-            'test_descriptor_transform_16_32',
-            sources: srcs + 'test/descriptor_transform.cu',
-            dependencies: deps,
-            include_directories: incls,
-            cuda_args: ['-DBICOS_CUDA', '-DINPUT_TYPE=uint16_t', '-DDESCRIPTOR_TYPE=uint32_t'],
-            cpp_args: '-DBICOS_CPU',
-            override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
-        ),
-        args: [datdir]
-    )
-    test(
-        'descriptor_transform_16_64',
-        executable(
-            'test_descriptor_transform_16_64',
-            sources: srcs + 'test/descriptor_transform.cu',
-            dependencies: deps,
-            include_directories: incls,
-            cuda_args: ['-DBICOS_CUDA', '-DINPUT_TYPE=uint16_t', '-DDESCRIPTOR_TYPE=uint64_t'],
-            cpp_args: '-DBICOS_CPU',
-            override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
-        ),
-        args: [datdir]
-    )
-    test(
-        'descriptor_transform_16_128',
-        executable(
-            'test_descriptor_transform_16_128',
-            sources: srcs + 'test/descriptor_transform.cu',
-            dependencies: deps,
-            include_directories: incls,
-            cuda_args: ['-DBICOS_CUDA', '-DINPUT_TYPE=uint16_t', '-DDESCRIPTOR_TYPE=uint128_t'],
-            cpp_args: '-DBICOS_CPU',
-            override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
-        ),
-        args: [datdir]
-    )
+
+    #### DESCRIPTOR TRANSFORM TESTS ####
+    foreach input_depth : [8, 16]
+        foreach descriptor_depth : [32, 64, 128]
+            testname = f'descriptor_transform_@input_depth@_@descriptor_depth@'
+            test(testname,
+                executable('test_' + testname,
+                    sources: srcs + 'test/descriptor_transform.cu',
+                    dependencies: deps,
+                    include_directories: incls,
+                    cuda_args: ['-DBICOS_CUDA', f'-DINPUT_TYPE=uint@input_depth@_t', f'-DDESCRIPTOR_TYPE=uint@descriptor_depth@_t'],
+                    cpp_args: '-DBICOS_CPU',
+                    override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
+                )
+            )
+        endforeach
+    endforeach
+
+    #### BICOS TESTS ####
+    # test(
+    #     'bicos_32',)
 endif
+
 
 install_headers('include/config.hpp', 'include/match.hpp', subdir: 'BICOS')
