@@ -23,7 +23,7 @@ static double nxcorr(const T* pix0, const T* pix1, size_t n) {
         sqdiffsum1 += diff1 * diff1;
     }
 
-    return n_expectancy / std::sqrt(sqdiffsum0 * sqdiffsum1);
+    return n_expectancy / sqrt(sqdiffsum0 * sqdiffsum1);
 }
 
 template<typename TInput>
@@ -113,11 +113,8 @@ static void agree_subpixel(
                 } else {
                     // clang-format off
 
-                    TInput *interp = (TInput*)alloca(n_images * sizeof(TInput));
-
-                    float *a = (float*)alloca(n_images * sizeof(float)),
-                          *b = (float*)alloca(n_images * sizeof(float)),
-                          *c = (float*)alloca(n_images * sizeof(float));
+                    TInput interp[33];
+                    float a[33], b[33], c[33];
 
                     const TInput *y0 = stack1.ptr<TInput>(row, idx1 - 1),
                                  *y1 = stack1.ptr<TInput>(row, idx1    ),
@@ -127,6 +124,9 @@ static void agree_subpixel(
                         a[i] = 0.5f * ( y0[i] - 2.0f * y1[i] + y2[i] );
                         b[i] = 0.5f * (-y0[i]                + y2[i] );
                         c[i] = y1[i];
+#ifdef BICOS_DEBUG
+                        assert(i < 33);
+#endif
                     }
 
                     // clang-format on

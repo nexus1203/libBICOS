@@ -24,26 +24,18 @@ int main(int argc, char const* const* argv) {
         sort_sequence_to_stack(lseq, rseq, lstack, rstack);
 
         std::cout << "loaded " << lseq.size() + rseq.size() << " images\n";
-    }
+    }    
 
     cv::Mat_<BICOS::disparity_t> disp;
 
     BICOS::Config c;
     c.nxcorr_thresh = 0.5;
-    c.subpixel_step = std::nullopt;
+    c.subpixel_step = 0.25;
 
 #if defined(BICOS_CUDA)
 
     std::vector<cv::cuda::GpuMat> lstack_gpu, rstack_gpu;
-    lstack_gpu.resize(lstack.size());
-    rstack_gpu.resize(rstack.size());
-
-    std::transform(lstack.begin(), lstack.end(), lstack_gpu.begin(), [](const cv::Mat& m) {
-        return cv::cuda::GpuMat(m);
-    });
-    std::transform(rstack.begin(), rstack.end(), rstack_gpu.begin(), [](const cv::Mat& m) {
-        return cv::cuda::GpuMat(m);
-    });
+    matvec_to_gpu(lstack, rstack, lstack_gpu, rstack_gpu);
 
     cv::cuda::GpuMat disp_gpu;
 

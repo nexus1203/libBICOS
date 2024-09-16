@@ -77,7 +77,7 @@ int main(void) {
     float step = randreal(0.1f, 0.5f);
 
     cuda::agree_subpixel_kernel<INPUT_TYPE>
-        <<<grid, block>>>(randdisp_dev, devptr, n, randsize, thresh, step, devout);
+        <<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, devout);
 
     cudaSafeCall(cudaGetLastError());
 
@@ -88,7 +88,7 @@ int main(void) {
 #else
 
     cuda::agree_kernel<INPUT_TYPE>
-        <<<grid, block>>>(randdisp_dev, devptr, n, randsize, thresh, devout);
+        <<<grid, block>>>(randdisp_dev, devptr, n, thresh, devout);
 
     cudaSafeCall(cudaGetLastError());
 

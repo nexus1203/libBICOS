@@ -8,7 +8,7 @@
 namespace BICOS::impl::cuda {
 
 template<typename T>
-static __forceinline__ __device__ double nxcorr(const T* pix0, const T* pix1, size_t n) {
+static __device__ double nxcorr(const T* pix0, const T* pix1, size_t n) {
     double mean0 = 0.0, mean1 = 0.0;
     for (size_t i = 0; i < n; ++i) {
         mean0 += pix0[i];
@@ -26,7 +26,7 @@ static __forceinline__ __device__ double nxcorr(const T* pix0, const T* pix1, si
         sqdiffsum1 += diff1 * diff1;
     }
 
-    return n_expectancy / std::sqrt(sqdiffsum0 * sqdiffsum1);
+    return n_expectancy / sqrt(sqdiffsum0 * sqdiffsum1);
 }
 
 template<typename TInput>
@@ -34,30 +34,38 @@ __global__ void agree_kernel(
     const cv::cuda::PtrStepSz<int16_t> raw_disp,
     const cv::cuda::PtrStepSz<TInput>* stacks,
     size_t n,
-    cv::Size sz,
     double nxcorr_threshold,
     cv::cuda::PtrStepSz<disparity_t> out
 ) {
-    const int x = blockIdx.x * blockDim.x + threadIdx.x;
-    const int y = blockIdx.y * blockDim.y + threadIdx.y;
+    const int col = blockIdx.x * blockDim.x + threadIdx.x;
+    const int row = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (out.cols <= x || out.rows <= y) {
+    if (out.cols <= col || out.rows <= row) {
         // __syncthreads();
         return;
     }
 
-    int16_t d0 = raw_disp(y, x);
+    int16_t d = raw_disp(row, col);
 
-    if (d0 == INVALID_DISP_<int16_t>) {
+    if (d == INVALID_DISP_<int16_t>) {
         // __syncthreads();
         return;
     }
+
+    int idx1 = col - d;
+
+    if (idx1 < 0 || out.cols <= idx1)
+        return;
 
     TInput pix0[33], pix1[33];
 
+    const cv::cuda::PtrStepSz<TInput>
+        *stack0 = stacks,
+        *stack1 = stacks + n;
+
     for (size_t t = 0; t < n; ++t) {
-        pix0[t] = stacks[t](y, x);
-        pix1[t] = stacks[n + t](y, x);
+        pix0[t] = stack0[t](row, col);
+        pix1[t] = stack1[t](row, idx1);
 #ifdef BICOS_DEBUG
         if (t >= 33)
             __trap();
@@ -69,7 +77,7 @@ __global__ void agree_kernel(
     if (nxc < nxcorr_threshold)
         return;
 
-    out(y, x) = d0;
+    out(row, col) = d;
 
     /* prefetch memory? */
     /*
@@ -97,53 +105,54 @@ __global__ void agree_subpixel_kernel(
     const cv::cuda::PtrStepSz<int16_t> raw_disp,
     const cv::cuda::PtrStepSz<TInput>* stacks,
     size_t n,
-    cv::Size sz,
     double nxcorr_threshold,
     float subpixel_step,
     cv::cuda::PtrStepSz<disparity_t> out
 ) {
-    const int x = blockIdx.x * blockDim.x + threadIdx.x;
-    const int y = blockIdx.y * blockDim.y + threadIdx.y;
+    const int col = blockIdx.x * blockDim.x + threadIdx.x;
+    const int row = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (out.cols <= x || out.rows <= y)
+    if (out.cols <= col || out.rows <= row)
         return;
 
-    const int16_t d0 = raw_disp(y, x);
+    const int16_t d = raw_disp(row, col);
 
-    if (d0 == INVALID_DISP_<int16_t>)
+    if (d == INVALID_DISP_<int16_t>)
         return;
 
-    const int idx1 = x - d0;
+    const int col1 = col - d;
 
-    if (idx1 < 0 || sz.width <= idx1)
+    if (col1 < 0 || out.cols <= col1)
         return;
 
     TInput pix0[33], pix1[33];
 
-    const cv::cuda::PtrStepSz<TInput>*stack0 = stacks, *stack1 = stacks + n;
+    const cv::cuda::PtrStepSz<TInput>
+        *stack0 = stacks,
+        *stack1 = stacks + n;
 
     for (size_t t = 0; t < n; ++t) {
-        pix0[t] = stack0[t](y, x);
-        pix1[t] = stack1[t](y, x);
+        pix0[t] = stack0[t](row, col);
+        pix1[t] = stack1[t](row, col1);
 #ifdef BICOS_DEBUG
         if (t >= 33)
             __trap();
 #endif
     }
 
-    if (idx1 == 0 || idx1 == sz.width - 1) {
+    if (col1 == 0 || col1 == out.cols - 1) {
         double nxc = nxcorr(pix0, pix1, n);
 
         if (nxc < nxcorr_threshold)
             return;
 
-        out(y, x) = d0;
+        out(row, col) = d;
     } else {
         TInput interp[33];
         float a[33], b[33], c[33];
 
         for (size_t t = 0; t < n; ++t) {
-            TInput y0 = stack1[t](y, idx1 - 1), y1 = pix1[t], y2 = stack1[t](y, idx1 + 1);
+            TInput y0 = stack1[t](row, col1 - 1), y1 = pix1[t], y2 = stack1[t](row, col1 + 1);
 
             a[t] = 0.5f * (y0 - 2.0f * y1 + y2);
             b[t] = 0.5f * (-y0 + y2);
@@ -153,7 +162,7 @@ __global__ void agree_subpixel_kernel(
         float best_x = 0.0f;
         double best_nxcorr = -1.0;
 
-        for (float x1 = -1.0f; x1 <= 1.0f; x1 += subpixel_step) {
+        for (float x = -1.0f; x <= 1.0f; x += subpixel_step) {
             for (size_t t = 0; t < n; ++t)
                 interp[t] = TInput(a[t] * x * x + b[t] * x + c[t]);
 
@@ -168,7 +177,7 @@ __global__ void agree_subpixel_kernel(
         if (best_nxcorr < nxcorr_threshold)
             return;
 
-        out(y, x) = d0 + best_x;
+        out(row, col) = d + best_x;
     }
 }
 

@@ -88,5 +88,12 @@
             "request": "launch",
             "program": "${workspaceFolder}/builddir/test_agree_subpixel_16"
         },
+        {
+            "name": "integration",
+            "type": "cuda-gdb",
+            "request": "launch",
+            "program": "${workspaceFolder}/builddir/test_integration",
+            "args": ["${workspaceFolder}/data"]
+        },
     ]
 }

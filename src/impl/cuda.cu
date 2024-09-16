@@ -132,7 +132,6 @@ static void match_impl(
             bicos_disp,
             ptrs_dev,
             n_images,
-            sz,
             nxcorr_threshold,
             subpixel_step.value(),
             out
@@ -143,7 +142,6 @@ static void match_impl(
             bicos_disp,
             ptrs_dev,
             n_images,
-            sz,
             nxcorr_threshold,
             out
         );
