@@ -48,7 +48,6 @@ if impl == 'cuda'
     srcs = files('src/impl/cuda.cu', 'src/impl/cpu.cpp', 'src/fileutils.cpp')
     incls = [incls, include_directories('test/include')]
 
-    #### DESCRIPTOR TRANSFORM TESTS ####
     foreach input_depth : [8, 16]
         foreach descriptor_depth : [32, 64, 128]
             testname = f'descriptor_transform_@input_depth@_@descriptor_depth@'
@@ -65,9 +64,19 @@ if impl == 'cuda'
         endforeach
     endforeach
 
-    #### BICOS TESTS ####
-    # test(
-    #     'bicos_32',)
+    foreach descriptor_depth : [32, 64, 128]
+        testname = f'bicos_@descriptor_depth@'
+        test(testname,
+            executable('test_' + testname,
+                sources: srcs + 'test/bicos.cu',
+                dependencies: deps,
+                include_directories: incls,
+                cuda_args: ['-DBICOS_CUDA', f'-DDESCRIPTOR_TYPE=uint@descriptor_depth@_t'],
+                cpp_args: '-DBICOS_CPU',
+                override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
+            )
+        )
+    endforeach
 endif
 
 

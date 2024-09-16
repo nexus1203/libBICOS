@@ -22,10 +22,12 @@ namespace cpu {
     private:
         T* _ptr;
         size_t _step;
+        cv::Size _sz;
 
     public:
         StepBuf(cv::Size size) {
             _step = size.width;
+            _sz = size;
             _ptr = new T[size.area()];
         }
 #if defined(BICOS_CUDA) && defined(__CUDACC__)
@@ -40,6 +42,7 @@ namespace cpu {
                 cudaMemcpyDeviceToHost
             ));
         }
+        friend class cuda::StepBuf<T>;
 #endif
         ~StepBuf() {
             delete[] _ptr;
@@ -53,6 +56,9 @@ namespace cpu {
         }
         const T* row(int i) const {
             return _ptr + i * _step;
+        }
+        cv::Size size() const {
+            return _sz;
         }
     };
 
@@ -72,6 +78,17 @@ namespace cuda {
         StepBuf(cv::Size size) {
             cudaSafeCall(cudaMallocPitch(&_ptr, &_stepb, size.width * sizeof(T), size.height));
             _sz = size;
+        }
+        StepBuf(const cpu::StepBuf<T>& host): StepBuf(host._sz) {
+            cudaSafeCall(cudaMemcpy2D(
+                _ptr,
+                _stepb,
+                host._ptr,
+                host._step * sizeof(T),
+                _sz.width * sizeof(T),
+                _sz.height,
+                cudaMemcpyHostToDevice
+            ));
         }
         ~StepBuf() {
             cudaFree(_ptr);
