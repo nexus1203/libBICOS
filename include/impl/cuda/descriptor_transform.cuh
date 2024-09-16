@@ -29,8 +29,13 @@ __global__ void descriptor_transform_kernel(
     Bitfield<TDescriptor> bf;
 
     double av = 0.0f;
-    for (size_t i = 0; i < n; ++i)
+    for (size_t i = 0; i < n; ++i) {
         av += pix[i] = stacks[i](y, x);
+#ifdef BICOS_DEBUG
+        if (i >= sizeof(pix))
+            __trap();
+#endif
+    }
     av /= double(n);
 
     //__syncthreads();
@@ -42,13 +47,12 @@ __global__ void descriptor_transform_kernel(
         const TInput a = pix[t + 0],
                      b = pix[t + 1],
                      c = pix[t + 2];
+        int& prev_pair_sum = prev_pair_sums[t % 2],
+             current_sum   = a + b;
         
         bf.set(a < b);
         bf.set(a < c);
         bf.set(a < av);
-
-        int& prev_pair_sum = prev_pair_sums[t % 2],
-             current_sum   = a + b;
 
         if (-1 != prev_pair_sum) {
             bf.set(prev_pair_sum < current_sum);
@@ -67,7 +71,7 @@ __global__ void descriptor_transform_kernel(
 
     // clang-format on
 
-    out->row(y)[x] = bf.get();
+    out->row(y)[x] = bf.v;
 }
 
 } // namespace BICOS::impl::cuda

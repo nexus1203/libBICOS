@@ -1,15 +1,20 @@
 #include "config.hpp"
 #include "impl/cpu/descriptor_transform.hpp"
 #include "impl/cuda/descriptor_transform.cuh"
-
 #include "util.cuh"
 
-#include "fileutils.hpp"
-#include <cstdint>
+#include <opencv2/core/cuda.hpp>
+#include <cstdlib>
+#include <format>
+#include <iostream>
+#include <random>
 
 using namespace BICOS;
 using namespace impl;
 using namespace test;
+
+#define _STR(s) #s
+#define STR(s) _STR(s)
 
 dim3 create_grid(dim3 block, cv::Size sz) {
     return dim3(
@@ -19,70 +24,80 @@ dim3 create_grid(dim3 block, cv::Size sz) {
 }
 
 template<typename T>
-bool assert_equals(const cpu::StepBuf<T>& a, const cpu::StepBuf<T>& b, cv::Size sz) {
-    for (size_t row = 0; row < sz.height; ++row) {
-        for (size_t col = 0; col < sz.width; ++col) {
-            T va = a.row(row)[col],
-              vb = b.row(row)[col];
-            assert(va == vb);
+bool equals(const cpu::StepBuf<T>& a, const cpu::StepBuf<T>& b, cv::Size sz) {
+    for (int row = 0; row < sz.height; ++row) {
+        for (int col = 0; col < sz.width; ++col) {
+            T va = a.row(row)[col], vb = b.row(row)[col];
+            if (va != vb) {
+                std::cerr << std::format("{} != {} at ({},{})\n", va, vb, col, row);
+                return false;
+            }
         }
     }
+
+    return true;
+}
+
+int rnd(int from, int to) {
+    std::random_device dev;
+    std::uniform_int_distribution<int> dist(from, to - 1);
+    int rnum = dist(dev);
+    return rnum;
 }
 
 int main(int argc, char const* const* argv) {
-    std::filesystem::path datadir = argv[1];
+    srand(time(NULL));
 
-    std::vector<SequenceEntry> lseq, rseq;
+    cv::Mat hoststack;
+    std::vector<cv::Mat_<INPUT_TYPE>> rand_host;
+    std::vector<cv::cuda::GpuMat> _rand_dev;
+    std::vector<cv::cuda::PtrStepSz<INPUT_TYPE>> rand_dev;
 
-    std::vector<cv::Mat> lcpu, rcpu;
-    std::vector<cv::cuda::GpuMat> lgpu, rgpu;
+    const cv::Size randsize(rnd(1024, 4096), rnd(512, 2048));
 
-    read_sequence(datadir, lseq, rseq, true);
-    sort_sequence_to_stack(lseq, rseq, lcpu, rcpu);
-    matvec_to_gpu(lcpu, rcpu, lgpu, rgpu);
+    std::cout << "descriptor transform on " << randsize << " " << STR(INPUT_TYPE) << " " << STR(DESCRIPTOR_TYPE) << std::endl;
 
-    cv::Mat lstack_host, rstack_host;
-
-    cv::merge(lcpu, lstack_host);
-    cv::merge(rcpu, rstack_host);
-
-    assert(lcpu.front().type() == CV_8U);
-
-    auto sz = lcpu.front().size();
-    auto n = lcpu.size();
-
-    auto ldesc_cpu =
-        cpu::descriptor_transform<uint8_t, uint128_t>(lstack_host, sz, n, TransformMode::LIMITED);
-    auto rdesc_cpu =
-        cpu::descriptor_transform<uint8_t, uint128_t>(rstack_host, sz, n, TransformMode::LIMITED);
-
-    const dim3 block(1024);
-    const dim3 grid = create_grid(block, sz);
-
-    auto ldesc_gpu = std::make_unique<cuda::StepBuf<uint128_t>>(sz),
-         rdesc_gpu = std::make_unique<cuda::StepBuf<uint128_t>>(sz);
-    RegisteredPtr ldesc_dev(ldesc_gpu.get()), rdesc_dev(rdesc_gpu.get());
-
-    std::vector<cv::cuda::PtrStepSz<uint8_t>> ptrs_host(2 * n);
-    RegisteredPtr ptrs_dev(ptrs_host.data(), 2 * n, true);
+    int max_bits = sizeof(DESCRIPTOR_TYPE) * 8;
+    size_t n = (max_bits + 7) / 4;
 
     for (size_t i = 0; i < n; ++i) {
-        ptrs_host[i] = lgpu[i];
-        ptrs_host[i + n] = rgpu[i];
+        cv::Mat_<INPUT_TYPE> randmat(randsize);
+        cv::randu(randmat, 0, std::numeric_limits<INPUT_TYPE>::max());
+        rand_host.push_back(randmat);
+
+        cv::cuda::GpuMat randmat_dev(randmat);
+        _rand_dev.push_back(randmat_dev);
+        rand_dev.push_back(randmat_dev);
     }
 
-    cuda::descriptor_transform_kernel<uint8_t, uint128_t>
-        <<<grid, block>>>(ptrs_dev, n, sz, ldesc_dev);
+    RegisteredPtr rand_devptr(rand_dev.data(), n, true);
+
+    cuda::StepBuf<DESCRIPTOR_TYPE> gpuout(randsize);
+    RegisteredPtr gpuout_devptr(&gpuout);
+
+    dim3 block(1024);
+    dim3 grid = create_grid(block, randsize);
+
+    cuda::descriptor_transform_kernel<INPUT_TYPE, DESCRIPTOR_TYPE>
+        <<<grid, block>>>(rand_devptr, n, randsize, gpuout_devptr);
+
+    cudaSafeCall(cudaGetLastError());
+
+    cv::merge(rand_host, hoststack);
+
+    auto cpuout = cpu::descriptor_transform<INPUT_TYPE, DESCRIPTOR_TYPE>(
+        hoststack,
+        randsize,
+        n,
+        TransformMode::LIMITED
+    );
+
     cudaSafeCall(cudaDeviceSynchronize());
 
-    cuda::descriptor_transform_kernel<uint8_t, uint128_t>
-        <<<grid, block>>>(ptrs_dev + n, n, sz, rdesc_dev);
-    cudaSafeCall(cudaDeviceSynchronize());
+    cpu::StepBuf<DESCRIPTOR_TYPE> gpuout_host(gpuout);
 
-    cpu::StepBuf<uint128_t> ldesc_gpu_host(*ldesc_gpu), rdesc_gpu_host(*rdesc_gpu);
-
-    assert_equals(*ldesc_cpu, ldesc_gpu_host, sz);
-    assert_equals(*rdesc_cpu, rdesc_gpu_host, sz);
+    if (!equals(*cpuout, gpuout_host, randsize))
+        return -1;
 
     return 0;
 }

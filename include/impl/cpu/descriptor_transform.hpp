@@ -47,7 +47,7 @@ static TDescirptor build_descriptor(const TInput* pix, size_t n) {
 
     // clang-format on
 
-    return bf.get();
+    return bf.v;
 }
 
 template<typename TInput, typename TDescriptor>
