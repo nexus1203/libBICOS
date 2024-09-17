@@ -29,20 +29,21 @@ __global__ void bicos_kernel(
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (out.cols <= x || out.rows <= y) {
-        // __syncthreads();
+    if (out.rows <= y)
         return;
-    }
 
     extern __shared__ char _row1[];
     TDescriptor* row1 = (TDescriptor*)_row1;
 
-    const TDescriptor d0 = descr0->row(y)[x];
-
-    for (size_t i = x; i < out.cols; i += blockDim.x)
+    for (size_t i = threadIdx.x; i < out.cols; i += blockDim.x)
         row1[i] = descr1->row(y)[i];
 
+    if (out.cols <= x)
+        return;
+
     __syncthreads();
+
+    const TDescriptor d0 = descr0->row(y)[x];
 
     int best_col1 = -1, min_cost = INT_MAX, num_duplicate_minima = 0;
 

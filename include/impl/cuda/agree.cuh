@@ -45,7 +45,7 @@ __global__ void agree_kernel(
         return;
     }
 
-    int16_t d = raw_disp(row, col);
+    const int16_t d = raw_disp(row, col);
 
     if (d == INVALID_DISP_<int16_t>) {
         // __syncthreads();
