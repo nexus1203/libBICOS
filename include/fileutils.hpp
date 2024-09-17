@@ -1,9 +1,7 @@
 #pragma once
 
-#include <algorithm>
 #include <filesystem>
 #include <opencv2/core.hpp>
-#include <type_traits>
 
 #include "config.hpp"
 #include "opencv2/core/cuda.hpp"
