@@ -54,9 +54,7 @@ __global__ void agree_kernel(
 
     TInput pix0[33], pix1[33];
 
-    const cv::cuda::PtrStepSz<TInput>
-        *stack0 = stacks,
-        *stack1 = stacks + n;
+    const cv::cuda::PtrStepSz<TInput>*stack0 = stacks, *stack1 = stacks + n;
 
     for (size_t t = 0; t < n; ++t) {
         pix0[t] = stack0[t](row, col);
@@ -122,9 +120,7 @@ __global__ void agree_subpixel_kernel(
 
     TInput pix0[33], pix1[33];
 
-    const cv::cuda::PtrStepSz<TInput>
-        *stack0 = stacks,
-        *stack1 = stacks + n;
+    const cv::cuda::PtrStepSz<TInput>*stack0 = stacks, *stack1 = stacks + n;
 
     for (size_t t = 0; t < n; ++t) {
         pix0[t] = stack0[t](row, col);
@@ -146,11 +142,15 @@ __global__ void agree_subpixel_kernel(
         TInput interp[33];
         float a[33], b[33], c[33];
 
-        for (size_t t = 0; t < n; ++t) {
-            TInput y0 = stack1[t](row, col1 - 1), y1 = pix1[t], y2 = stack1[t](row, col1 + 1);
+        // clang-format off
 
-            a[t] = 0.5f * (y0 - 2.0f * y1 + y2);
-            b[t] = 0.5f * (-y0 + y2);
+        for (size_t t = 0; t < n; ++t) {
+            TInput y0 = stack1[t](row, col1 - 1), 
+                   y1 = pix1[t],
+                   y2 = stack1[t](row, col1 + 1);
+
+            a[t] = 0.5f * ( y0 - 2.0f * y1 + y2);
+            b[t] = 0.5f * (-y0             + y2);
             c[t] = y1;
         }
 
@@ -173,6 +173,8 @@ __global__ void agree_subpixel_kernel(
             return;
 
         out(row, col) = d + best_x;
+
+        // clang-format on 
     }
 }
 

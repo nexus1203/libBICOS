@@ -26,24 +26,24 @@ __global__ void bicos_kernel(
     const StepBuf<TDescriptor>* descr1,
     cv::cuda::PtrStepSz<int16_t> out
 ) {
-    const int x = blockIdx.x * blockDim.x + threadIdx.x;
-    const int y = blockIdx.y * blockDim.y + threadIdx.y;
+    const int col = blockIdx.x * blockDim.x + threadIdx.x;
+    const int row = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (out.rows <= y)
+    if (out.rows <= row)
         return;
 
     extern __shared__ char _row1[];
     TDescriptor* row1 = (TDescriptor*)_row1;
 
     for (size_t i = threadIdx.x; i < out.cols; i += blockDim.x)
-        row1[i] = descr1->row(y)[i];
+        row1[i] = descr1->row(row)[i];
 
-    if (out.cols <= x)
+    if (out.cols <= col)
         return;
 
     __syncthreads();
 
-    const TDescriptor d0 = descr0->row(y)[x];
+    const TDescriptor d0 = descr0->row(row)[col];
 
     int best_col1 = -1, min_cost = INT_MAX, num_duplicate_minima = 0;
 
@@ -64,7 +64,7 @@ __global__ void bicos_kernel(
     if (0 < num_duplicate_minima)
         return;
 
-    out(y, x) = abs(x - best_col1);
+    out(row, col) = abs(col - best_col1);
 }
 
 } // namespace BICOS::impl

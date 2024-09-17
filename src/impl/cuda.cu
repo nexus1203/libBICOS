@@ -41,7 +41,6 @@ static void match_impl(
 
     StepBuf<TDescriptor> descr0(sz), descr1(sz);
 
-    size_t smem_size;
     dim3 block(1024);
     dim3 grid = create_grid(block, sz);
 
@@ -78,7 +77,7 @@ static void match_impl(
     cv::cuda::GpuMat bicos_disp(sz, cv::DataType<int16_t>::type);
     bicos_disp.setTo(INVALID_DISP_<int16_t>);
 
-    smem_size = sz.width * sizeof(TDescriptor);
+    size_t smem_size = sz.width * sizeof(TDescriptor);
 
     cudaSafeCall(cudaFuncSetAttribute(
         bicos_kernel<TDescriptor>,
@@ -92,18 +91,12 @@ static void match_impl(
     /* nxcorr */
 
     out.create(sz, cv::DataType<disparity_t>::type);
-    out.setTo(INVALID_DISP);
-
-    // smem_size = sz.width * n_images * sizeof(TInput);
+    out.setTo(INVALID_DISP, _stream);
 
     block = dim3(768);
     grid = create_grid(block, sz);
 
-    if (subpixel_step.has_value()) {
-        cudaSafeCall(cudaDeviceSetLimit(
-            cudaLimitStackSize,
-            1024 + 3 * n_images * (sizeof(TInput) + sizeof(float))
-        ));
+    if (subpixel_step.has_value())
         agree_subpixel_kernel<TInput><<<grid, block, 0, mainstream>>>(
             bicos_disp,
             ptrs_dev,
@@ -112,11 +105,9 @@ static void match_impl(
             subpixel_step.value(),
             out
         );
-    } else {
-        cudaSafeCall(cudaDeviceSetLimit(cudaLimitStackSize, 1024 + 2 * n_images * sizeof(TInput)));
+    else
         agree_kernel<TInput>
             <<<grid, block, 0, mainstream>>>(bicos_disp, ptrs_dev, n_images, nxcorr_threshold, out);
-    }
 
     cudaSafeCall(cudaGetLastError());
 }

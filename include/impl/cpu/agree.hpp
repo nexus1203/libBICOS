@@ -73,7 +73,7 @@ static void agree_subpixel(
     const cv::Mat1s& raw_disp,
     const cv::Mat& stack0,
     const cv::Mat& stack1,
-    size_t n_images,
+    size_t n,
     double nxcorr_threshold,
     float subpixel_step,
     cv::Mat_<disparity_t>& ret
@@ -94,16 +94,16 @@ static void agree_subpixel(
                 if (d == INVALID_DISP_<int16_t>)
                     continue;
 
-                const int idx1 = col - d;
+                const int col1 = col - d;
 
-                if (idx1 < 0 || sz.width <= idx1)
+                if (col1 < 0 || sz.width <= col1)
                     continue;
 
-                if (idx1 == 0 || idx1 == sz.width - 1) {
+                if (col1 == 0 || col1 == sz.width - 1) {
                     double nxc = nxcorr(
                         stack0.ptr<TInput>(row, col),
-                        stack1.ptr<TInput>(row, idx1),
-                        n_images
+                        stack1.ptr<TInput>(row, col1),
+                        n
                     );
 
                     if (nxc < nxcorr_threshold)
@@ -116,16 +116,16 @@ static void agree_subpixel(
                     TInput interp[33];
                     float a[33], b[33], c[33];
 
-                    const TInput *y0 = stack1.ptr<TInput>(row, idx1 - 1),
-                                 *y1 = stack1.ptr<TInput>(row, idx1    ),
-                                 *y2 = stack1.ptr<TInput>(row, idx1 + 1);
+                    const TInput *y0 = stack1.ptr<TInput>(row, col1 - 1),
+                                 *y1 = stack1.ptr<TInput>(row, col1    ),
+                                 *y2 = stack1.ptr<TInput>(row, col1 + 1);
                     
-                    for (size_t i = 0; i < n_images; ++i) {
-                        a[i] = 0.5f * ( y0[i] - 2.0f * y1[i] + y2[i] );
-                        b[i] = 0.5f * (-y0[i]                + y2[i] );
-                        c[i] = y1[i];
+                    for (size_t t = 0; t < n; ++t) {
+                        a[t] = 0.5f * ( y0[t] - 2.0f * y1[t] + y2[t]);
+                        b[t] = 0.5f * (-y0[t]                + y2[t]);
+                        c[t] = y1[t];
 #ifdef BICOS_DEBUG
-                        assert(i < 33);
+                        assert(t < 33);
 #endif
                     }
 
@@ -135,10 +135,10 @@ static void agree_subpixel(
                     double best_nxcorr = -1.0;
 
                     for (float x = -1.0f; x <= 1.0f; x += subpixel_step) {
-                        for (size_t i = 0; i < n_images; ++i)
-                            interp[i] = TInput(a[i] * x * x + b[i] * x + c[i]);
+                        for (size_t t = 0; t < n; ++t)
+                            interp[t] = TInput(a[t] * x * x + b[t] * x + c[t]);
 
-                        double nxc = nxcorr(stack0.ptr<TInput>(row, col), interp, n_images);
+                        double nxc = nxcorr(stack0.ptr<TInput>(row, col), interp, n);
 
                         if (best_nxcorr < nxc) {
                             best_x = x;
