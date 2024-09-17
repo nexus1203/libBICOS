@@ -76,4 +76,24 @@ T randreal(T from, T to) {
     return dist(dev);
 }
 
+template <typename T>
+bool equals(const cv::Mat_<T>& a, const cv::Mat_<T>& b) {
+    for (int row = 0; row < a.rows; ++row) {
+        for (int col = 0; col < a.cols; ++col) {
+            T va = ((T*)a.ptr(row))[col],
+              vb = ((T*)b.ptr(row))[col];
+
+            if (std::isnan(va) && std::isnan(vb))
+                continue;
+
+            if (va != vb) {
+                std::cerr << std::format("{} != {} at ({},{})\n", va, vb, col, row);
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 } // namespace BICOS::test

@@ -107,6 +107,19 @@ if impl == 'cuda'
         args: [datdir],
         timeout: 150
     )
+
+    test('integration_raw',
+        executable('test_integration_raw',
+            sources: srcs + 'test/integration_raw.cu',
+            dependencies: deps,
+            include_directories: incls,
+            cuda_args: '-DBICOS_CUDA',
+            cpp_args: '-DBICOS_CPU',
+            override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
+        ),
+        args: [datdir],
+        timeout: 150
+    )
 endif
 
 install_headers('include/config.hpp', 'include/match.hpp', subdir: 'BICOS')
