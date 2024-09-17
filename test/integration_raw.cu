@@ -1,5 +1,5 @@
 #include "common.cuh"
-#include "config.hpp"
+#include "common.hpp"
 #include "fileutils.hpp"
 #include "impl/cpu/bicos.hpp"
 #include "impl/cpu/descriptor_transform.hpp"
@@ -7,7 +7,6 @@
 #include "impl/cuda/cutil.cuh"
 #include "impl/cuda/descriptor_transform.cuh"
 
-#include <cstdint>
 #include <opencv2/core/cuda_types.hpp>
 
 using namespace BICOS;

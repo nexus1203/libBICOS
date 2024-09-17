@@ -1,8 +1,8 @@
 #pragma once
 
-#include <opencv2/core.hpp>
+#include "common.hpp"
 
-#include "config.hpp"
+#include <opencv2/core.hpp>
 
 #if defined(BICOS_CUDA)
     #include <opencv2/core/cuda.hpp>

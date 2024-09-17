@@ -1,8 +1,8 @@
 #pragma once
 
-#include <opencv2/core.hpp>
+#include "common.hpp"
 
-#include "config.hpp"
+#include <opencv2/core.hpp>
 
 namespace BICOS::impl::cpu {
 

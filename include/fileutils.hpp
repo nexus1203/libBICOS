@@ -1,10 +1,10 @@
 #pragma once
 
+#include "common.hpp"
+
 #include <filesystem>
 #include <opencv2/core.hpp>
-
-#include "config.hpp"
-#include "opencv2/core/cuda.hpp"
+#include <opencv2/core/cuda.hpp>
 
 namespace BICOS {
 

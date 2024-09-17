@@ -1,5 +1,5 @@
 #include "common.cuh"
-#include "config.hpp"
+#include "common.hpp"
 #include "cpu.hpp"
 #include "cuda.hpp"
 #include "fileutils.hpp"

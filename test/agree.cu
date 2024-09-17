@@ -1,4 +1,4 @@
-#include "config.hpp"
+#include "common.hpp"
 #include "impl/cpu/agree.hpp"
 #include "impl/cuda/agree.cuh"
 #include "impl/cuda/cutil.cuh"

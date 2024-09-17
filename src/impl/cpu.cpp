@@ -1,7 +1,7 @@
-#include <cstdint>
+#include "common.hpp"
+
 #include <format>
 
-#include "config.hpp"
 #include "cpu.hpp"
 
 #include "impl/cpu/agree.hpp"

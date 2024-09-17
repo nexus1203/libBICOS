@@ -1,6 +1,6 @@
 #pragma once
 
-#include "config.hpp"
+#include "common.hpp"
 
 #include <opencv2/core/cuda.hpp>
 

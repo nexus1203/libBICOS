@@ -1,7 +1,7 @@
 #pragma once
 
+#include "common.hpp"
 #include "bitfield.hpp"
-#include "config.hpp"
 #include "stepbuf.hpp"
 
 namespace BICOS::impl::cpu {

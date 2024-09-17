@@ -126,4 +126,4 @@ if impl == 'cuda'
     )
 endif
 
-install_headers('include/config.hpp', 'include/match.hpp', subdir: 'BICOS')
+install_headers('include/common.hpp', 'include/match.hpp', subdir: 'BICOS')

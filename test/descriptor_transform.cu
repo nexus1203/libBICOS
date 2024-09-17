@@ -1,10 +1,9 @@
-#include "config.hpp"
+#include "common.hpp"
 #include "impl/cpu/descriptor_transform.hpp"
 #include "impl/cuda/cutil.cuh"
 #include "impl/cuda/descriptor_transform.cuh"
 #include "common.cuh"
 
-#include <format>
 #include <iostream>
 #include <opencv2/core/cuda.hpp>
 

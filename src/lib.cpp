@@ -1,4 +1,4 @@
-#include "config.hpp"
+#include "common.hpp"
 
 #if defined(BICOS_CPU)
     #include "cpu.hpp"
