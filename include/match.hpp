@@ -14,7 +14,7 @@ void match(
     const std::vector<InputImage>& stack0,
     const std::vector<InputImage>& stack1,
     OutputImage& disparity,
-    Config cfg
+    Config cfg = Config()
 #if defined(BICOS_CUDA)
     ,
     cv::cuda::Stream& stream = cv::cuda::Stream::Null()

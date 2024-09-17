@@ -17,10 +17,11 @@ struct SequenceEntry {
     }
 };
 
-void save_disparity(const cv::Mat_<BICOS::disparity_t>& disparity, const std::string& name);
+void save_disparity(const cv::Mat_<BICOS::disparity_t>& disparity, std::filesystem::path outfile);
 
 void read_sequence(
-    const std::filesystem::path& image_dir,
+    std::filesystem::path image_dir0,
+    std::optional<std::filesystem::path> image_dir1,
     std::vector<SequenceEntry>& lseq,
     std::vector<SequenceEntry>& rseq,
     bool force_grayscale

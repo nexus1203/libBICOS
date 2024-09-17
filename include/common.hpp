@@ -31,9 +31,9 @@ using OutputImage = cv::cuda::GpuMat;
 enum class TransformMode { LIMITED, FULL };
 
 struct Config {
-    double nxcorr_thresh;
-    std::optional<float> subpixel_step;
-    TransformMode mode;
+    double nxcorr_thresh = 0.5;
+    std::optional<float> subpixel_step = std::nullopt;
+    TransformMode mode = TransformMode::LIMITED;
 };
 
 } // namespace BICOS

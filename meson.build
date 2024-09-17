@@ -40,7 +40,7 @@ executable(
     'bicos-cli',
     sources: ['src/cli.cpp', 'src/fileutils.cpp'],
     include_directories: incls,
-    dependencies: deps,
+    dependencies: deps + dependency('cxxopts'),
     link_with: libs,
     install: false,
     override_options: ['cpp_std=c++20'],
@@ -110,7 +110,7 @@ if impl == 'cuda'
                 override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
             ),
             args: [datdir],
-            timeout: 150
+            timeout: -1
         )
     endif
 

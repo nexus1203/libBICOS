@@ -1,16 +1,16 @@
 #include "fileutils.hpp"
 
+#include <filesystem>
 #include <format>
 #include <iostream>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+#include <stdexcept>
 
 namespace BICOS {
 
-void save_disparity(const cv::Mat_<BICOS::disparity_t>& disparity, const std::string& name) {
+void save_disparity(const cv::Mat_<BICOS::disparity_t>& disparity, std::filesystem::path outfile) {
     cv::Mat normalized, colorized;
-
-    std::filesystem::path outfile = "/tmp/" + name;
 
     cv::normalize(disparity, normalized, 0, 255, cv::NORM_MINMAX, CV_8UC1);
     normalized.setTo(0, disparity == -1);
@@ -21,33 +21,67 @@ void save_disparity(const cv::Mat_<BICOS::disparity_t>& disparity, const std::st
     }
 }
 
-void read_sequence(
-    const std::filesystem::path& image_dir,
-    std::vector<SequenceEntry>& lseq,
-    std::vector<SequenceEntry>& rseq,
-    bool force_grayscale
-) {
+static void read_single_dir(auto d, bool gray, auto& vec) {
     namespace fs = std::filesystem;
+    for (auto const& e: fs::directory_iterator(d)) {
+        const fs::path p = e.path();
+        size_t l;
+        auto idx = stoul(p.filename().string(), &l);
 
-    for (auto const& entry: fs::directory_iterator(image_dir)) {
-        const fs::path path = entry.path();
-        const std::string fname = path.filename().string();
-        if (std::string::npos == fname.find("_")) {
-            std::cerr << "Ignoring file: " << fname << std::endl;
-            continue;
-        }
+        if (l == 0)
+            throw std::invalid_argument("Expecting numbered files with names NN.png; e.g 0.png, 1.png...");
 
-        auto idx = stoul(fname);
-        cv::Mat m = cv::imread(path, force_grayscale ? cv::IMREAD_GRAYSCALE : cv::IMREAD_UNCHANGED);
+        cv::Mat m = cv::imread(p, gray ? cv::IMREAD_GRAYSCALE : cv::IMREAD_UNCHANGED);
         if (4 == m.channels()) {
             cv::Mat no_alpha;
             cv::cvtColor(m, no_alpha, cv::COLOR_BGRA2BGR);
             m = no_alpha;
         }
 
-        auto& sequence = std::string::npos != fname.find("_left") ? lseq : rseq;
+        vec.push_back((SequenceEntry) { idx, m });
+    }
+}
 
-        sequence.push_back((SequenceEntry) { idx, m });
+void read_sequence(
+    std::filesystem::path image_dir0,
+    std::optional<std::filesystem::path> image_dir1,
+    std::vector<SequenceEntry>& lseq,
+    std::vector<SequenceEntry>& rseq,
+    bool force_grayscale
+) {
+    namespace fs = std::filesystem;
+
+    if (image_dir1) {
+        read_single_dir(image_dir0, force_grayscale, lseq);
+        read_single_dir(image_dir1.value(), force_grayscale, rseq);
+    } else {
+        for (auto const& entry: fs::directory_iterator(image_dir0)) {
+            static const std::string errmsg = "Expecting numbered files with names NN_{left,right}.png; e.g.: 5_left.png, 10_right.png...";
+
+            const fs::path path = entry.path();
+            const std::string fname = path.filename().string();
+
+            if (std::string::npos == fname.find("_"))
+                throw std::invalid_argument(errmsg);
+
+            size_t l;
+            auto idx = stoul(fname, &l);
+
+            if (l == 0)
+                throw std::invalid_argument(errmsg);
+
+            cv::Mat m =
+                cv::imread(path, force_grayscale ? cv::IMREAD_GRAYSCALE : cv::IMREAD_UNCHANGED);
+            if (4 == m.channels()) {
+                cv::Mat no_alpha;
+                cv::cvtColor(m, no_alpha, cv::COLOR_BGRA2BGR);
+                m = no_alpha;
+            }
+
+            auto& sequence = std::string::npos != fname.find("_left") ? lseq : rseq;
+
+            sequence.push_back((SequenceEntry) { idx, m });
+        }
     }
 
     if (lseq.size() != rseq.size()) {
@@ -86,8 +120,12 @@ void matvec_to_gpu(
     lout.resize(lin.size());
     rout.resize(rin.size());
 
-    std::transform(lin.begin(), lin.end(), lout.begin(), [](const cv::Mat& m) { return cv::cuda::GpuMat(m); });
-    std::transform(rin.begin(), rin.end(), rout.begin(), [](const cv::Mat& m) { return cv::cuda::GpuMat(m); });
+    std::transform(lin.begin(), lin.end(), lout.begin(), [](const cv::Mat& m) {
+        return cv::cuda::GpuMat(m);
+    });
+    std::transform(rin.begin(), rin.end(), rout.begin(), [](const cv::Mat& m) {
+        return cv::cuda::GpuMat(m);
+    });
 }
 
 } // namespace BICOS
