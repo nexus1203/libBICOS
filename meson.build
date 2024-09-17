@@ -1,5 +1,7 @@
 project('libBICOS', 'cpp', version: '1.0.0', license: 'LGPL-3.0-or-later')
 
+pkg = import('pkgconfig')
+
 impl = get_option('implementation')
 srcs = files('src/lib.cpp')
 incls = include_directories('include')
@@ -126,4 +128,24 @@ if impl == 'cuda'
     )
 endif
 
+configure_file(
+    output: 'config.hpp',
+    configuration: {
+        'BICOS_VERSION': meson.project_version(),
+        'BICOS_CPU': impl == 'cpu',
+        'BICOS_CUDA': impl == 'cuda',
+    },
+    install: true,
+    install_dir: 'include/BICOS',
+)
 install_headers('include/common.hpp', 'include/match.hpp', subdir: 'BICOS')
+if pkg.found()
+    pkg.generate(libs,
+        name: 'libBICOS',
+        version: meson.project_version(),
+        description: 'GPU-accelerated library for binary correspondence search on multishot stereo imagery',
+        requires: 'opencv4',
+        url: 'https://github.com/JMUWRobotics/libBICOS',
+        subdirs: 'BICOS'
+    )
+endif

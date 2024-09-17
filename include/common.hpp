@@ -1,5 +1,9 @@
 #pragma once
 
+#if !defined(BICOS_CUDA) && !defined(BICOS_CPU)
+    #include "config.hpp"
+#endif
+
 #include <limits>
 #include <opencv2/core.hpp>
 #include <optional>
