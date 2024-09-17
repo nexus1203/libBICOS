@@ -1,29 +1,13 @@
+#include "common.cuh"
 #include "impl/cpu/bicos.hpp"
 #include "impl/cuda/bicos.cuh"
-#include "util.cuh"
+#include "impl/cuda/cutil.cuh"
 
-#include <iostream>
 #include <opencv2/core/cuda.hpp>
-#include <format>
 
 using namespace BICOS;
 using namespace impl;
 using namespace test;
-
-bool equals(const cv::Mat1s& a, const cv::Mat1s& b) {
-    for (int row = 0; row < a.rows; ++row) {
-        for (int col = 0; col < a.cols; ++col) {
-            int16_t va = a.at<int16_t>(row, col),
-                    vb = b.at<int16_t>(row, col);
-            if (va != vb) {
-                std::cerr << std::format("{} != {} at ({},{})\n", va, vb, row, col);
-                return false;
-            }
-        }
-    }
-
-    return true;
-}
 
 int main(void) {
     const cv::Size randsize(randint(256, 1028), randint(128, 512));

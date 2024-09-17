@@ -3,6 +3,7 @@
 
 #include "impl/cuda/agree.cuh"
 #include "impl/cuda/bicos.cuh"
+#include "impl/cuda/cutil.cuh"
 #include "impl/cuda/descriptor_transform.cuh"
 
 #include <cstdint>
@@ -32,36 +33,17 @@ static void match_impl(
     cv::cuda::Stream& _stream
 ) {
     std::vector<cv::cuda::PtrStepSz<TInput>> ptrs_host(2 * n_images);
-    cv::cuda::PtrStepSz<TInput>* ptrs_dev;
 
     for (size_t i = 0; i < n_images; ++i) {
         ptrs_host[i] = _stack0[i];
         ptrs_host[i + n_images] = _stack1[i];
     }
 
-    cudaSafeCall(cudaHostRegister(
-        ptrs_host.data(),
-        2 * n_images * sizeof(cv::cuda::PtrStepSz<TInput>),
-        cudaHostRegisterReadOnly
-    ));
-    cudaSafeCall(cudaHostGetDevicePointer(&ptrs_dev, ptrs_host.data(), 0));
-
-    auto descr0 = std::make_unique<StepBuf<TDescriptor>>(sz),
-         descr1 = std::make_unique<StepBuf<TDescriptor>>(sz);
-
-    StepBuf<TDescriptor> *descr0_dev, *descr1_dev;
-
-    cudaSafeCall(cudaHostRegister(descr0.get(), sizeof(StepBuf<TDescriptor>), 0));
-    cudaSafeCall(cudaHostRegister(descr1.get(), sizeof(StepBuf<TDescriptor>), 0));
-    cudaSafeCall(cudaHostGetDevicePointer(&descr0_dev, descr0.get(), 0));
-    cudaSafeCall(cudaHostGetDevicePointer(&descr1_dev, descr1.get(), 0));
+    StepBuf<TDescriptor> descr0(sz), descr1(sz);
 
     size_t smem_size;
     dim3 block(1024);
-    dim3 grid(
-        cv::cuda::device::divUp(sz.width, block.x),
-        cv::cuda::device::divUp(sz.height, block.y)
-    );
+    dim3 grid = create_grid(block, sz);
 
     cudaStream_t mainstream = cv::cuda::StreamAccessor::getStream(_stream);
 
@@ -75,27 +57,25 @@ static void match_impl(
     cudaEventCreate(&event0);
     cudaEventCreate(&event1);
 
-    smem_size = 0; //block.x * n_images * sizeof(TInput);
+    RegisteredPtr ptrs_dev(ptrs_host.data(), 2 * n_images, true);
+    RegisteredPtr descr0_dev(&descr0), descr1_dev(&descr1);
 
     descriptor_transform_kernel<TInput, TDescriptor>
-        <<<grid, block, smem_size, substream0>>>(ptrs_dev, n_images, sz, descr0_dev);
+        <<<grid, block, 0, substream0>>>(ptrs_dev, n_images, sz, descr0_dev);
     cudaSafeCall(cudaGetLastError());
     cudaSafeCall(cudaEventRecord(event0, substream0));
+
     descriptor_transform_kernel<TInput, TDescriptor>
-        <<<grid, block, smem_size, substream1>>>(ptrs_dev + n_images, n_images, sz, descr1_dev);
+        <<<grid, block, 0, substream1>>>(ptrs_dev + n_images, n_images, sz, descr1_dev);
     cudaSafeCall(cudaGetLastError());
     cudaSafeCall(cudaEventRecord(event1, substream1));
 
     cudaSafeCall(cudaStreamWaitEvent(mainstream, event0));
     cudaSafeCall(cudaStreamWaitEvent(mainstream, event1));
 
-#ifdef BICOS_DEBUG
-    cudaDeviceSynchronize();
-#endif
-
     /* bicos disparity */
 
-    cv::cuda::GpuMat bicos_disp(sz, CV_16SC1);
+    cv::cuda::GpuMat bicos_disp(sz, cv::DataType<int16_t>::type);
     bicos_disp.setTo(INVALID_DISP_<int16_t>);
 
     smem_size = sz.width * sizeof(TDescriptor);
@@ -108,10 +88,6 @@ static void match_impl(
     bicos_kernel<TDescriptor>
         <<<grid, block, smem_size, mainstream>>>(descr0_dev, descr1_dev, bicos_disp);
     cudaSafeCall(cudaGetLastError());
-
-#ifdef BICOS_DEBUG
-    cudaDeviceSynchronize();
-#endif
 
     /* nxcorr */
 
@@ -138,24 +114,11 @@ static void match_impl(
         );
     } else {
         cudaSafeCall(cudaDeviceSetLimit(cudaLimitStackSize, 1024 + 2 * n_images * sizeof(TInput)));
-        agree_kernel<TInput><<<grid, block, 0, mainstream>>>(
-            bicos_disp,
-            ptrs_dev,
-            n_images,
-            nxcorr_threshold,
-            out
-        );
+        agree_kernel<TInput>
+            <<<grid, block, 0, mainstream>>>(bicos_disp, ptrs_dev, n_images, nxcorr_threshold, out);
     }
 
     cudaSafeCall(cudaGetLastError());
-
-#ifdef BICOS_DEBUG
-    cudaDeviceSynchronize();
-#endif
-
-    cudaSafeCall(cudaHostUnregister(descr1.get()));
-    cudaSafeCall(cudaHostUnregister(descr0.get()));
-    cudaSafeCall(cudaHostUnregister(ptrs_host.data()));
 }
 
 void match(

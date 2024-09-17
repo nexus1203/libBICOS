@@ -1,7 +1,6 @@
 #pragma once
 
 #include "config.hpp"
-#include "impl/util.hpp"
 
 #include <opencv2/core/cuda/common.hpp>
 
@@ -40,17 +39,13 @@ __global__ void agree_kernel(
     const int col = blockIdx.x * blockDim.x + threadIdx.x;
     const int row = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (out.cols <= col || out.rows <= row) {
-        // __syncthreads();
+    if (out.cols <= col || out.rows <= row)
         return;
-    }
 
     const int16_t d = raw_disp(row, col);
 
-    if (d == INVALID_DISP_<int16_t>) {
-        // __syncthreads();
+    if (d == INVALID_DISP_<int16_t>)
         return;
-    }
 
     int idx1 = col - d;
 

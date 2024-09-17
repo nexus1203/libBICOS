@@ -1,7 +1,6 @@
 #pragma once
 
 #include "bitfield.hpp"
-#include "impl/util.hpp"
 #include "stepbuf.hpp"
 
 namespace BICOS::impl::cuda {
@@ -13,13 +12,11 @@ __global__ void descriptor_transform_kernel(
     cv::Size size,
     StepBuf<TDescriptor>* out
 ) {
-    const int x = blockIdx.x * blockDim.x + threadIdx.x;
-    const int y = blockIdx.y * blockDim.y + threadIdx.y;
+    const int col = blockIdx.x * blockDim.x + threadIdx.x;
+    const int row = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (size.width <= x || size.height <= y) {
-        //__syncthreads();
+    if (size.width <= col || size.height <= row)
         return;
-    }
 
     // caching necessary?
 
@@ -30,15 +27,13 @@ __global__ void descriptor_transform_kernel(
 
     double av = 0.0f;
     for (size_t i = 0; i < n; ++i) {
-        av += pix[i] = stacks[i](y, x);
+        av += pix[i] = stacks[i](row, col);
 #ifdef BICOS_DEBUG
         if (i >= sizeof(pix))
             __trap();
 #endif
     }
     av /= double(n);
-
-    //__syncthreads();
 
     // clang-format off
 
@@ -71,7 +66,7 @@ __global__ void descriptor_transform_kernel(
 
     // clang-format on
 
-    out->row(y)[x] = bf.v;
+    out->row(row)[col] = bf.v;
 }
 
 } // namespace BICOS::impl::cuda

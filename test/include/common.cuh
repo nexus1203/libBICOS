@@ -7,43 +7,8 @@
 #include <format>
 
 #include "stepbuf.hpp"
-#include "config.hpp"
 
 namespace BICOS::test {
-
-template<typename T>
-class RegisteredPtr {
-private:
-    T *_phost, *_pdev;
-
-public:
-    RegisteredPtr(T* phost, size_t n = 1, bool read_only = false): _phost(phost) {
-        unsigned int flags = read_only ? cudaHostRegisterReadOnly : 0;
-
-        cudaSafeCall(cudaHostRegister(_phost, sizeof(T) * n, flags));
-        cudaSafeCall(cudaHostGetDevicePointer(&_pdev, _phost, 0));
-    }
-    ~RegisteredPtr() {
-        cudaSafeCall(cudaHostUnregister(_phost));
-    }
-
-    RegisteredPtr(const RegisteredPtr&) = delete;
-    RegisteredPtr& operator=(const RegisteredPtr&) = delete;
-
-    operator T*() {
-        return _pdev;
-    }
-    operator const T*() {
-        return _pdev;
-    }
-
-    T* operator+(int rhs) {
-        return _pdev + rhs;
-    }
-    const T* operator+(int rhs) const {
-        return _pdev + rhs;
-    }
-};
 
 int randint(int from = INT_MIN, int to = INT_MAX) {
     static thread_local std::random_device dev;
@@ -86,6 +51,21 @@ bool equals(const cv::Mat_<T>& a, const cv::Mat_<T>& b) {
             if (std::isnan(va) && std::isnan(vb))
                 continue;
 
+            if (va != vb) {
+                std::cerr << std::format("{} != {} at ({},{})\n", va, vb, col, row);
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+template<typename T>
+bool equals(const impl::cpu::StepBuf<T>& a, const impl::cpu::StepBuf<T>& b, cv::Size sz) {
+    for (int row = 0; row < sz.height; ++row) {
+        for (int col = 0; col < sz.width; ++col) {
+            T va = a.row(row)[col], vb = b.row(row)[col];
             if (va != vb) {
                 std::cerr << std::format("{} != {} at ({},{})\n", va, vb, col, row);
                 return false;

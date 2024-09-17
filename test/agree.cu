@@ -1,35 +1,16 @@
 #include "config.hpp"
 #include "impl/cpu/agree.hpp"
 #include "impl/cuda/agree.cuh"
+#include "impl/cuda/cutil.cuh"
 #include "opencv2/core/traits.hpp"
-#include "util.cuh"
+#include "common.cuh"
 
-#include <format>
-#include <iostream>
 #include <limits>
 #include <opencv2/core/cuda.hpp>
 
 using namespace BICOS;
 using namespace impl;
 using namespace test;
-
-bool equals(const cv::Mat_<disparity_t>& a, const cv::Mat_<disparity_t>& b) {
-    for (int row = 0; row < a.rows; ++row) {
-        for (int col = 0; col < a.cols; ++col) {
-            disparity_t va = a.at<disparity_t>(row, col), vb = b.at<disparity_t>(row, col);
-
-            if (std::isnan(va) && std::isnan(vb))
-                continue;
-
-            if (va != vb) {
-                std::cerr << std::format("{} != {} at ({},{})\n", va, vb, row, col);
-                return false;
-            }
-        }
-    }
-
-    return true;
-}
 
 int main(void) {
     int n = 10;
@@ -87,8 +68,7 @@ int main(void) {
 
 #else
 
-    cuda::agree_kernel<INPUT_TYPE>
-        <<<grid, block>>>(randdisp_dev, devptr, n, thresh, devout);
+    cuda::agree_kernel<INPUT_TYPE><<<grid, block>>>(randdisp_dev, devptr, n, thresh, devout);
 
     cudaSafeCall(cudaGetLastError());
 

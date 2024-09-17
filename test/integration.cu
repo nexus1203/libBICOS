@@ -1,8 +1,8 @@
+#include "common.cuh"
 #include "config.hpp"
 #include "cpu.hpp"
 #include "cuda.hpp"
 #include "fileutils.hpp"
-#include "util.cuh"
 
 #include <iostream>
 #include <optional>
@@ -22,8 +22,8 @@ int main(int argc, char const* const* argv) {
 
     for (double thresh: { 0.5, 0.75, 0.9 }) {
         Config cfg { .nxcorr_thresh = thresh,
-                            .subpixel_step = std::nullopt,
-                            .mode = TransformMode::LIMITED };
+                     .subpixel_step = std::nullopt,
+                     .mode = TransformMode::LIMITED };
 
         cv::Mat_<disparity_t> dhost, ddev_host;
         cv::cuda::GpuMat ddev;
