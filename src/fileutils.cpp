@@ -16,15 +16,20 @@ void save_disparity(const cv::Mat_<BICOS::disparity_t>& disparity, std::filesyst
     normalized.setTo(0, disparity == -1);
     cv::applyColorMap(normalized, colorized, cv::COLORMAP_TURBO);
 
-    if (!cv::imwrite(outfile.replace_extension("png"), colorized)) {
-        std::cerr << "Could not save image!" << std::endl;
-    }
+    if (!cv::imwrite(outfile.replace_extension("png"), colorized))
+        std::cerr << "Could not save to\t" << outfile << std::endl;
+    else
+        std::cout << "Saved colorized disparity to\t\t" << outfile << std::endl;
+
+    if (!cv::imwrite(outfile.replace_extension("tiff"), disparity))
+        std::cerr << "Could not save to\t" << outfile << std::endl;
+    else
+        std::cout << "Saved floating-point disparity to\t" << outfile << std::endl;
 }
 
 static void read_single_dir(auto d, bool gray, auto& vec) {
-    namespace fs = std::filesystem;
-    for (auto const& e: fs::directory_iterator(d)) {
-        const fs::path p = e.path();
+    for (auto const& e: std::filesystem::directory_iterator(d)) {
+        const std::filesystem::path p = e.path();
         size_t l;
         auto idx = stoul(p.filename().string(), &l);
 
