@@ -7,7 +7,7 @@
 namespace BICOS::impl::cuda {
 
 template<typename T>
-static __device__ double nxcorr(const T* pix0, const T* pix1, size_t n) {
+static __device__ __forceinline__ double nxcorr(const T* pix0, const T* pix1, size_t n) {
     double mean0 = 0.0, mean1 = 0.0;
     for (size_t i = 0; i < n; ++i) {
         mean0 += pix0[i];

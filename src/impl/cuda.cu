@@ -6,20 +6,12 @@
 #include "impl/cuda/cutil.cuh"
 #include "impl/cuda/descriptor_transform.cuh"
 
-#include <cstdint>
 #include <opencv2/core.hpp>
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/core/cuda/common.hpp>
 #include <opencv2/core/cuda_stream_accessor.hpp>
 
 namespace BICOS::impl::cuda {
-
-dim3 create_grid(dim3 block, cv::Size sz) {
-    return dim3(
-        cv::cuda::device::divUp(sz.width, block.x),
-        cv::cuda::device::divUp(sz.height, block.y)
-    );
-}
 
 template<typename TInput, typename TDescriptor>
 static void match_impl(

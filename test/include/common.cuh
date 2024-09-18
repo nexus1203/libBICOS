@@ -27,13 +27,6 @@ void randomize(impl::cpu::StepBuf<T>& sb) {
     std::generate(p, p + sb.size().area(), ibe);
 }
 
-dim3 create_grid(dim3 block, cv::Size sz) {
-    return dim3(
-        cv::cuda::device::divUp(sz.width, block.x),
-        cv::cuda::device::divUp(sz.height, block.y)
-    );
-}
-
 template <typename T>
 T randreal(T from, T to) {
     static thread_local std::random_device dev;

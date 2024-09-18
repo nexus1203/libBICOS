@@ -1,14 +1,24 @@
 #pragma once
 
 #include <iostream>
+#include <opencv2/core.hpp>
+#include <opencv2/core/cuda/common.hpp>
 
-#define assertCudaSuccess(call) do {\
-    cudaError_t err = (call);\
-    if (cudaSuccess != err) {\
-        std::cerr << "libBICOS CUDA error in " << __FILE__ << " [ " << __PRETTY_FUNCTION__ << " | " << __LINE__ << " ]: " << cudaGetErrorString(err) << std::endl;\
-        abort();\
-    }\
-} while (0)
+#define assertCudaSuccess(call) \
+    do { \
+        cudaError_t err = (call); \
+        if (cudaSuccess != err) { \
+            std::cerr << "libBICOS CUDA error in " << __FILE__ << " [ " << __PRETTY_FUNCTION__ \
+                      << " | Line " << __LINE__ << " ]: " << cudaGetErrorString(err) << std::endl; \
+            abort(); \
+        } \
+    } while (0)
+
+#define create_grid(block, size) \
+    dim3( \
+        cv::cuda::device::divUp(size.width, block.x), \
+        cv::cuda::device::divUp(size.height, block.y) \
+    )
 
 template<typename T>
 class RegisteredPtr {
