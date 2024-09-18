@@ -35,8 +35,8 @@ __global__ void bicos_kernel(
     extern __shared__ char _row1[];
     TDescriptor* row1 = (TDescriptor*)_row1;
 
-    for (size_t i = threadIdx.x; i < out.cols; i += blockDim.x)
-        row1[i] = descr1->row(row)[i];
+    for (size_t c = threadIdx.x; c < out.cols; c += blockDim.x)
+        row1[c] = descr1->row(row)[c];
 
     if (out.cols <= col)
         return;

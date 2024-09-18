@@ -102,5 +102,17 @@
             "program": "${workspaceFolder}/builddir/test_integration_raw",
             "args": ["${workspaceFolder}/data"]
         },
+        {
+            "name": "agree_subpixel_smem_8",
+            "type": "cuda-gdb",
+            "request": "launch",
+            "program": "${workspaceFolder}/builddir/test_agree_subpixel_smem_8"
+        },
+        {
+            "name": "agree_subpixel_smem_16",
+            "type": "cuda-gdb",
+            "request": "launch",
+            "program": "${workspaceFolder}/builddir/test_agree_subpixel_smem_16"
+        },
     ]
 }
