@@ -32,11 +32,11 @@ int main(void) {
     size_t smem_size = randsize.width * sizeof(DESCRIPTOR_TYPE);
     cuda::bicos_kernel<DESCRIPTOR_TYPE><<<grid, block, smem_size>>>(lptr, rptr, disp_dev);
 
-    cudaSafeCall(cudaGetLastError());
+    assertCudaSuccess(cudaGetLastError());
 
     cv::Mat1s disp = cpu::bicos(ld, rd, randsize);
 
-    cudaSafeCall(cudaDeviceSynchronize());
+    assertCudaSuccess(cudaDeviceSynchronize());
 
     cv::Mat1s devout;
     disp_dev.download(devout);

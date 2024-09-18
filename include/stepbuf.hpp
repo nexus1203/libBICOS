@@ -3,6 +3,7 @@
 #include <opencv2/core.hpp>
 
 #if defined(BICOS_CUDA) && defined(__CUDACC__)
+    #include "impl/cuda/cutil.cuh"
     #include <opencv2/core/cuda/common.hpp>
 #endif
 
@@ -32,7 +33,7 @@ namespace cpu {
         }
 #if defined(BICOS_CUDA) && defined(__CUDACC__)
         StepBuf(const cuda::StepBuf<T>& dev): StepBuf(dev._sz) {
-            cudaSafeCall(cudaMemcpy2D(
+            assertCudaSuccess(cudaMemcpy2D(
                 _ptr,
                 _step * sizeof(T),
                 dev._ptr,
@@ -76,11 +77,11 @@ namespace cuda {
 
     public:
         StepBuf(cv::Size size) {
-            cudaSafeCall(cudaMallocPitch(&_ptr, &_stepb, size.width * sizeof(T), size.height));
+            assertCudaSuccess(cudaMallocPitch(&_ptr, &_stepb, size.width * sizeof(T), size.height));
             _sz = size;
         }
         StepBuf(const cpu::StepBuf<T>& host): StepBuf(host._sz) {
-            cudaSafeCall(cudaMemcpy2D(
+            assertCudaSuccess(cudaMemcpy2D(
                 _ptr,
                 _stepb,
                 host._ptr,

@@ -1,8 +1,8 @@
+#include "common.cuh"
 #include "common.hpp"
 #include "impl/cpu/descriptor_transform.hpp"
 #include "impl/cuda/cutil.cuh"
 #include "impl/cuda/descriptor_transform.cuh"
-#include "common.cuh"
 
 #include <iostream>
 #include <opencv2/core/cuda.hpp>
@@ -49,7 +49,7 @@ int main(void) {
     cuda::descriptor_transform_kernel<INPUT_TYPE, DESCRIPTOR_TYPE>
         <<<grid, block>>>(rand_devptr, n, randsize, gpuout_devptr);
 
-    cudaSafeCall(cudaGetLastError());
+    assertCudaSuccess(cudaGetLastError());
 
     cv::merge(rand_host, hoststack);
 
@@ -60,7 +60,7 @@ int main(void) {
         TransformMode::LIMITED
     );
 
-    cudaSafeCall(cudaDeviceSynchronize());
+    assertCudaSuccess(cudaDeviceSynchronize());
 
     cpu::StepBuf<DESCRIPTOR_TYPE> gpuout_host(gpuout);
 

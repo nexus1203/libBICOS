@@ -136,7 +136,7 @@ static void agree_subpixel(
 
                     for (float x = -1.0f; x <= 1.0f; x += subpixel_step) {
                         for (size_t t = 0; t < n; ++t)
-                            interp[t] = TInput(a[t] * x * x + b[t] * x + c[t]);
+                            interp[t] = (TInput)std::lround(a[t] * x * x + b[t] * x + c[t]);
 
                         double nxc = nxcorr(stack0.ptr<TInput>(row, col), interp, n);
 

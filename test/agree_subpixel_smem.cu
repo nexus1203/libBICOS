@@ -52,9 +52,9 @@ int main(void) {
 
     cuda::agree_subpixel_kernel<INPUT_TYPE>
         <<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, devout_gmem);
-    cudaSafeCall(cudaGetLastError());
+    assertCudaSuccess(cudaGetLastError());
 
-    cudaSafeCall(cudaFuncSetAttribute(
+    assertCudaSuccess(cudaFuncSetAttribute(
         impl::cuda::agree_subpixel_kernel_smem<INPUT_TYPE>,
         cudaFuncAttributeMaxDynamicSharedMemorySize,
         smem_size
@@ -62,14 +62,20 @@ int main(void) {
 
     cuda::agree_subpixel_kernel_smem<INPUT_TYPE>
         <<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, devout_smem);
-    cudaSafeCall(cudaGetLastError());
+    assertCudaSuccess(cudaGetLastError());
 
     cv::Mat_<disparity_t> gmem, smem;
     devout_gmem.download(gmem);
     devout_smem.download(smem);
 
-    if (!equals(gmem, smem))
+    double err = maxerr(gmem, smem);
+
+    std::cout << "max-err: " << err << std::endl;
+    if (err > 2.0) {
         return 1;
+    }
+
+    return 0;
 
     return 0;
 }

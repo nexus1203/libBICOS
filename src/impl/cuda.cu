@@ -49,28 +49,28 @@ static void match_impl(
     /* descriptor transform */
 
     cudaStream_t substream0, substream1;
-    cudaStreamCreate(&substream0);
-    cudaStreamCreate(&substream1);
+    assertCudaSuccess(cudaStreamCreate(&substream0));
+    assertCudaSuccess(cudaStreamCreate(&substream1));
 
     cudaEvent_t event0, event1;
-    cudaEventCreate(&event0);
-    cudaEventCreate(&event1);
+    assertCudaSuccess(cudaEventCreate(&event0));
+    assertCudaSuccess(cudaEventCreate(&event1));
 
     RegisteredPtr ptrs_dev(ptrs_host.data(), 2 * n_images, true);
     RegisteredPtr descr0_dev(&descr0), descr1_dev(&descr1);
 
     descriptor_transform_kernel<TInput, TDescriptor>
         <<<grid, block, 0, substream0>>>(ptrs_dev, n_images, sz, descr0_dev);
-    cudaSafeCall(cudaGetLastError());
-    cudaSafeCall(cudaEventRecord(event0, substream0));
+    assertCudaSuccess(cudaGetLastError());
+    assertCudaSuccess(cudaEventRecord(event0, substream0));
 
     descriptor_transform_kernel<TInput, TDescriptor>
         <<<grid, block, 0, substream1>>>(ptrs_dev + n_images, n_images, sz, descr1_dev);
-    cudaSafeCall(cudaGetLastError());
-    cudaSafeCall(cudaEventRecord(event1, substream1));
+    assertCudaSuccess(cudaGetLastError());
+    assertCudaSuccess(cudaEventRecord(event1, substream1));
 
-    cudaSafeCall(cudaStreamWaitEvent(mainstream, event0));
-    cudaSafeCall(cudaStreamWaitEvent(mainstream, event1));
+    assertCudaSuccess(cudaStreamWaitEvent(mainstream, event0));
+    assertCudaSuccess(cudaStreamWaitEvent(mainstream, event1));
 
     /* bicos disparity */
 
@@ -79,14 +79,14 @@ static void match_impl(
 
     size_t smem_size = sz.width * sizeof(TDescriptor);
 
-    cudaSafeCall(cudaFuncSetAttribute(
+    assertCudaSuccess(cudaFuncSetAttribute(
         bicos_kernel<TDescriptor>,
         cudaFuncAttributeMaxDynamicSharedMemorySize,
         smem_size
     ));
     bicos_kernel<TDescriptor>
         <<<grid, block, smem_size, mainstream>>>(descr0_dev, descr1_dev, bicos_disp);
-    cudaSafeCall(cudaGetLastError());
+    assertCudaSuccess(cudaGetLastError());
 
     /* nxcorr */
 
@@ -109,7 +109,7 @@ static void match_impl(
         agree_kernel<TInput>
             <<<grid, block, 0, mainstream>>>(bicos_disp, ptrs_dev, n_images, nxcorr_threshold, out);
 
-    cudaSafeCall(cudaGetLastError());
+    assertCudaSuccess(cudaGetLastError());
 }
 
 void match(

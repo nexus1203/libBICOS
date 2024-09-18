@@ -1,10 +1,10 @@
+#include "common.cuh"
 #include "common.hpp"
 #include "impl/cpu/agree.hpp"
 #include "impl/cuda/agree.cuh"
 #include "impl/cuda/cutil.cuh"
 #include "opencv2/core.hpp"
 #include "opencv2/core/traits.hpp"
-#include "common.cuh"
 #include "opencv2/core/types.hpp"
 
 #include <limits>
@@ -70,33 +70,20 @@ int main(void) {
     cuda::agree_subpixel_kernel<INPUT_TYPE>
         <<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, devout);
 
-    cudaSafeCall(cudaGetLastError());
+    assertCudaSuccess(cudaGetLastError());
 
     cpu::agree_subpixel<INPUT_TYPE>(randdisp, hinput_l, hinput_r, n, thresh, step, hostout);
 
-    cudaSafeCall(cudaDeviceSynchronize());
+    assertCudaSuccess(cudaDeviceSynchronize());
 
     devout.download(devout_host);
 
-    const float magic = -10000.0f;
-    cv::patchNaNs(hostout, magic);
-    cv::patchNaNs(devout_host, magic);
-
-    hostout.setTo(0.0f, devout_host == magic);
-    devout_host.setTo(0.0f, hostout == magic);
-    hostout.setTo(0.0f, hostout == magic);
-    devout_host.setTo(0.0f, devout_host == magic);
-
-    double maxerr;
-
-    cv::Mat absd;
-    cv::absdiff(hostout, devout_host, absd);
-    cv::minMaxIdx(absd, NULL, &maxerr);
+    double err = maxerr(hostout, devout_host);
 
     // TODO investigate why agree_subpixel fails on random input data
 
-    std::cout << "max-err: " << maxerr << std::endl;
-    if (maxerr > 2.0) {
+    std::cout << "max-err: " << err << std::endl;
+    if (err > 2.0) {
         return 1;
     }
 
@@ -106,11 +93,11 @@ int main(void) {
 
     cuda::agree_kernel<INPUT_TYPE><<<grid, block>>>(randdisp_dev, devptr, n, thresh, devout);
 
-    cudaSafeCall(cudaGetLastError());
+    assertCudaSuccess(cudaGetLastError());
 
     cpu::agree<INPUT_TYPE>(randdisp, hinput_l, hinput_r, n, thresh, hostout);
 
-    cudaSafeCall(cudaDeviceSynchronize());
+    assertCudaSuccess(cudaDeviceSynchronize());
 
     devout.download(devout_host);
 

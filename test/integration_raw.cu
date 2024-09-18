@@ -56,7 +56,7 @@ int main(int argc, char const* const* argv) {
     impl::cuda::descriptor_transform_kernel<uint8_t, uint128_t>
         <<<grid, block, 0, rstream>>>(dptr + n, n, sz, rdptr);
 
-    cudaSafeCall(cudaGetLastError());
+    assertCudaSuccess(cudaGetLastError());
 
     cudaEventRecord(ldescev, lstream);
     cudaEventRecord(rdescev, rstream);
@@ -69,7 +69,7 @@ int main(int argc, char const* const* argv) {
 
     size_t smem_size = sz.width * sizeof(uint128_t);
 
-    cudaSafeCall(cudaFuncSetAttribute(
+    assertCudaSuccess(cudaFuncSetAttribute(
         impl::cuda::bicos_kernel<uint128_t>,
         cudaFuncAttributeMaxDynamicSharedMemorySize,
         smem_size
@@ -78,7 +78,7 @@ int main(int argc, char const* const* argv) {
     impl::cuda::bicos_kernel<uint128_t>
         <<<grid, block, smem_size, mainstream>>>(ldptr, rdptr, raw_gpu);
 
-    cudaSafeCall(cudaGetLastError());
+    assertCudaSuccess(cudaGetLastError());
 
     cv::Mat lhin, rhin;
 
