@@ -4,11 +4,14 @@
 #include <random>
 
 #include "common.hpp"
+#include "cuda.hpp"
+#include "fileutils.hpp"
 #include "impl/cuda/agree.cuh"
 #include "impl/cuda/bicos.cuh"
 #include "impl/cuda/cutil.cuh"
 #include "impl/cuda/descriptor_transform.cuh"
 #include "opencv2/core.hpp"
+#include "opencv2/core/traits.hpp"
 #include "stepbuf.hpp"
 
 using namespace BICOS;
@@ -20,6 +23,33 @@ constexpr int n = 5;
 constexpr double thresh = 0.9;
 constexpr float step = 0.25;
 static const cv::Size size(3300, 2200);
+
+__global__ void nxcorr_kernel(const uint8_t* a, const uint8_t* b, size_t n, double* out) {
+    *out = cuda::nxcorr(a, b, n);
+}
+
+void bench_nxcorr_subroutine(benchmark::State& state) {
+    uint8_t _a[50], _b[50], *a, *b;
+
+    for (size_t i = 0; i < sizeof(_a); ++i) {
+        _a[i] = rand();
+        _b[i] = rand();
+    }
+
+    cudaMalloc(&a, sizeof(_a));
+    cudaMalloc(&b, sizeof(_b));
+
+    cudaMemcpy(a, _a, sizeof(_a), cudaMemcpyHostToDevice);
+    cudaMemcpy(b, _b, sizeof(_b), cudaMemcpyHostToDevice);
+
+    double *out;
+    cudaMalloc(&out, 1);
+
+    for (auto _ : state) {
+        nxcorr_kernel<<<1,1>>>(a, b, sizeof(_a), out);
+        cudaDeviceSynchronize();
+    }
+}
 
 template<typename TInput>
 void bench_agree_kernel(benchmark::State& state) {
@@ -216,6 +246,35 @@ void bench_descriptor_transform_kernel(benchmark::State& state) {
     assertCudaSuccess(cudaGetLastError());
 }
 
+void bench_integration(benchmark::State& state) {
+    std::vector<SequenceEntry> lseq, rseq;
+    std::vector<cv::Mat> lhost, rhost;
+    std::vector<cv::cuda::GpuMat> ldev, rdev;
+
+    read_sequence(SOURCE_ROOT "/data", std::nullopt, lseq, rseq, true);
+    sort_sequence_to_stack(lseq, rseq, lhost, rhost);
+    matvec_to_gpu(lhost, rhost, ldev, rdev);
+
+    int n = std::min(state.range(0), (int64_t)ldev.size());
+    float step = 0.01f * state.range(1);
+
+    ldev.resize(n);
+    rdev.resize(n);
+
+    Config c { .nxcorr_thresh = thresh,
+               .subpixel_step = step == 0.0f ? std::nullopt : std::optional(step),
+               .mode = TransformMode::LIMITED };
+
+    cv::cuda::GpuMat out;
+    out.create(ldev.front().size(), cv::DataType<disparity_t>::type);
+
+    for (auto _: state) {
+        cuda::match(ldev, rdev, out, c, cv::cuda::Stream::Null());
+        cudaDeviceSynchronize();
+    }
+}
+
+BENCHMARK(bench_nxcorr_subroutine);
 BENCHMARK(bench_agree_kernel<uint8_t>);
 BENCHMARK(bench_agree_kernel<uint16_t>);
 BENCHMARK(bench_agree_subpixel_kernel<uint8_t>);
@@ -231,5 +290,11 @@ BENCHMARK(bench_descriptor_transform_kernel<uint8_t, uint64_t>);
 BENCHMARK(bench_descriptor_transform_kernel<uint16_t, uint64_t>);
 BENCHMARK(bench_descriptor_transform_kernel<uint8_t, uint128_t>);
 BENCHMARK(bench_descriptor_transform_kernel<uint16_t, uint128_t>);
+
+BENCHMARK(bench_integration)
+    ->ArgsProduct({
+        { 2, 8, 14, 20 }, // n
+        { 0, 25, 20, 15, 10 } // step * 100
+    });
 
 BENCHMARK_MAIN();
