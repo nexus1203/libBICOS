@@ -11,19 +11,19 @@ static double nxcorr(const T* pix0, const T* pix1, size_t n) {
         mean0 += pix0[i];
         mean1 += pix1[i];
     }
-    mean0 /= double(n);
-    mean1 /= double(n);
+    mean0 /= n;
+    mean1 /= n;
 
     double n_expectancy = 0.0, sqdiffsum0 = 0.0, sqdiffsum1 = 0.0;
     for (size_t i = 0; i < n; ++i) {
         double diff0 = pix0[i] - mean0, diff1 = pix1[i] - mean1;
 
-        n_expectancy += diff0 * diff1;
-        sqdiffsum0 += diff0 * diff0;
-        sqdiffsum1 += diff1 * diff1;
+        n_expectancy = std::fma(diff0, diff1, n_expectancy);
+        sqdiffsum0 = std::fma(diff0, diff0, sqdiffsum0);
+        sqdiffsum1 = std::fma(diff1, diff1, sqdiffsum1);
     }
 
-    return n_expectancy / sqrt(sqdiffsum0 * sqdiffsum1);
+    return n_expectancy / std::sqrt(sqdiffsum0 * sqdiffsum1);
 }
 
 template<typename TInput>
