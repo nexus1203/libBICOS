@@ -5,7 +5,7 @@
 #include <opencv2/imgproc.hpp>
 #include <optional>
 
-#if defined(BICOS_CUDA)
+#ifdef BICOS_CUDA
     #include <opencv2/core/cuda.hpp>
 #endif
 
@@ -26,6 +26,9 @@ int main(int argc, char const* const* argv) {
         ("s,step", "Subpixel step (optional)", cxxopts::value<float>())
         ("m,mode", "Tranformation mode {'FULL', 'LIMITED'} (unused)", cxxopts::value<std::string>()->default_value("LIMITED"))
         ("o,outfile", "Output file for disparity image", cxxopts::value<std::string>()->default_value("bicosdisp.png"))
+#ifdef BICOS_CUDA
+        ("single", "Set single instead of double precision")
+#endif
         ("h,help", "Display this message");
 
     opts.parse_positional({"folder0", "folder1"});
@@ -64,8 +67,12 @@ int main(int argc, char const* const* argv) {
 
     if (args.count("step"))
         c.subpixel_step = args["step"].as<float>();
+#ifdef BICOS_CUDA
+    if (args.count("single"))
+        c.precision = Precision::SINGLE;
+#endif
 
-#if defined(BICOS_CUDA)
+#ifdef BICOS_CUDA
 
     std::vector<cv::cuda::GpuMat> lstack_gpu, rstack_gpu;
     matvec_to_gpu(lstack, rstack, lstack_gpu, rstack_gpu);

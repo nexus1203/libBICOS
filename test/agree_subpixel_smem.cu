@@ -12,7 +12,7 @@ using namespace test;
 int main(void) {
     int n = 15;
 
-    const cv::Size randsize(randint(1024, 4096), randint(512, 2048));
+    const cv::Size randsize(randint(512, 2048), randint(256, 1024));
 
     std::vector<cv::cuda::GpuMat> _devinput;
     std::vector<cv::cuda::PtrStepSz<INPUT_TYPE>> devinput;
@@ -35,7 +35,7 @@ int main(void) {
     cv::cuda::GpuMat randdisp_dev;
     randdisp_dev.upload(randdisp);
 
-    const dim3 block(768);
+    const dim3 block(512);
     const dim3 grid = create_grid(block, randsize);
 
     double thresh = randreal(-0.9, 0.9);
@@ -50,17 +50,17 @@ int main(void) {
 
     float step = 0.25f;
 
-    cuda::agree_subpixel_kernel<INPUT_TYPE>
+    cuda::agree_subpixel_kernel<INPUT_TYPE, double, cuda::nxcorrd>
         <<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, devout_gmem);
     assertCudaSuccess(cudaGetLastError());
 
     assertCudaSuccess(cudaFuncSetAttribute(
-        impl::cuda::agree_subpixel_kernel_smem<INPUT_TYPE>,
+        impl::cuda::agree_subpixel_kernel_smem<INPUT_TYPE, double, cuda::nxcorrd>,
         cudaFuncAttributeMaxDynamicSharedMemorySize,
         smem_size
     ));
 
-    cuda::agree_subpixel_kernel_smem<INPUT_TYPE>
+    cuda::agree_subpixel_kernel_smem<INPUT_TYPE, double, cuda::nxcorrd>
         <<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, devout_smem);
     assertCudaSuccess(cudaGetLastError());
 

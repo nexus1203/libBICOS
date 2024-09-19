@@ -9,7 +9,7 @@
         cudaError_t err = (call); \
         if (cudaSuccess != err) { \
             std::cerr << "libBICOS CUDA error in " << __FILE__ << " [ " << __PRETTY_FUNCTION__ \
-                      << " | l" << __LINE__ << " ]: " << cudaGetErrorString(err) << std::endl; \
+                      << " | L" << __LINE__ << " ]: " << cudaGetErrorString(err) << std::endl; \
             abort(); \
         } \
     } while (0)

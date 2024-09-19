@@ -54,7 +54,7 @@ int main(void) {
     cv::cuda::GpuMat randdisp_dev;
     randdisp_dev.upload(randdisp);
 
-    const dim3 block(768);
+    const dim3 block(512);
     const dim3 grid = create_grid(block, randsize);
 
     double thresh = randreal(-0.9, 0.9);
@@ -67,7 +67,7 @@ int main(void) {
 
     float step = 0.25f;
 
-    cuda::agree_subpixel_kernel<INPUT_TYPE>
+    cuda::agree_subpixel_kernel<INPUT_TYPE, double, cuda::nxcorrd>
         <<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, devout);
 
     assertCudaSuccess(cudaGetLastError());
@@ -91,7 +91,7 @@ int main(void) {
 
 #else
 
-    cuda::agree_kernel<INPUT_TYPE><<<grid, block>>>(randdisp_dev, devptr, n, thresh, devout);
+    cuda::agree_kernel<INPUT_TYPE, double, cuda::nxcorrd><<<grid, block>>>(randdisp_dev, devptr, n, thresh, devout);
 
     assertCudaSuccess(cudaGetLastError());
 

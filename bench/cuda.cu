@@ -24,10 +24,12 @@ constexpr double thresh = 0.9;
 constexpr float step = 0.25;
 static const cv::Size size(3300, 2200);
 
-__global__ void nxcorr_kernel(const uint8_t* a, const uint8_t* b, size_t n, double* out) {
-    *out = cuda::nxcorr(a, b, n);
+template <typename TPrecision, cuda::corrfun<uint8_t, TPrecision> FCorr>
+__global__ void nxcorr_kernel(const uint8_t* a, const uint8_t* b, size_t n, TPrecision* out) {
+    *out = FCorr(a, b, n);
 }
 
+template <typename TPrecision, cuda::corrfun<uint8_t, TPrecision> FCorr>
 void bench_nxcorr_subroutine(benchmark::State& state) {
     uint8_t _a[50], _b[50], *a, *b;
 
@@ -42,11 +44,11 @@ void bench_nxcorr_subroutine(benchmark::State& state) {
     cudaMemcpy(a, _a, sizeof(_a), cudaMemcpyHostToDevice);
     cudaMemcpy(b, _b, sizeof(_b), cudaMemcpyHostToDevice);
 
-    double *out;
+    TPrecision *out;
     cudaMalloc(&out, 1);
 
     for (auto _ : state) {
-        nxcorr_kernel<<<1,1>>>(a, b, sizeof(_a), out);
+        nxcorr_kernel<TPrecision, FCorr><<<1,1>>>(a, b, sizeof(_a), out);
         cudaDeviceSynchronize();
     }
 }
@@ -80,7 +82,7 @@ void bench_agree_kernel(benchmark::State& state) {
     const dim3 grid = create_grid(block, size);
 
     for (auto _: state) {
-        cuda::agree_kernel<TInput><<<grid, block>>>(randdisp_dev, devptr, n, thresh, out);
+        cuda::agree_kernel<TInput, double, cuda::nxcorrd><<<grid, block>>>(randdisp_dev, devptr, n, thresh, out);
         cudaDeviceSynchronize();
     }
 
@@ -116,7 +118,7 @@ void bench_agree_subpixel_kernel(benchmark::State& state) {
     const dim3 grid = create_grid(block, size);
 
     for (auto _: state) {
-        cuda::agree_subpixel_kernel<TInput>
+        cuda::agree_subpixel_kernel<TInput, double, cuda::nxcorrd>
             <<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, out);
         cudaDeviceSynchronize();
     }
@@ -155,13 +157,13 @@ void bench_agree_subpixel_kernel_smem(benchmark::State& state) {
     size_t smem_size = size.width * n * sizeof(TInput);
 
     assertCudaSuccess(cudaFuncSetAttribute(
-        cuda::agree_subpixel_kernel_smem<TInput>,
+        cuda::agree_subpixel_kernel_smem<TInput, double, cuda::nxcorrd>,
         cudaFuncAttributeMaxDynamicSharedMemorySize,
         smem_size
     ));
 
     for (auto _: state) {
-        cuda::agree_subpixel_kernel_smem<TInput>
+        cuda::agree_subpixel_kernel_smem<TInput, double, cuda::nxcorrd>
             <<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, out);
         cudaDeviceSynchronize();
     }
@@ -274,7 +276,9 @@ void bench_integration(benchmark::State& state) {
     }
 }
 
-BENCHMARK(bench_nxcorr_subroutine);
+BENCHMARK(bench_nxcorr_subroutine<float, cuda::nxcorrf>)->Repetitions(10)->ReportAggregatesOnly(true);
+BENCHMARK(bench_nxcorr_subroutine<double, cuda::nxcorrd>)->Repetitions(10)->ReportAggregatesOnly(true);
+
 BENCHMARK(bench_agree_kernel<uint8_t>);
 BENCHMARK(bench_agree_kernel<uint16_t>);
 BENCHMARK(bench_agree_subpixel_kernel<uint8_t>);

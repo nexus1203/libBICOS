@@ -29,11 +29,17 @@ using OutputImage = cv::cuda::GpuMat;
 #endif
 
 enum class TransformMode { LIMITED, FULL };
+#if defined(BICOS_CUDA)
+enum class Precision { SINGLE, DOUBLE };
+#endif
 
 struct Config {
     double nxcorr_thresh = 0.5;
     std::optional<float> subpixel_step = std::nullopt;
     TransformMode mode = TransformMode::LIMITED;
+#if defined(BICOS_CUDA)
+    Precision precision = Precision::DOUBLE;
+#endif
 };
 
 } // namespace BICOS

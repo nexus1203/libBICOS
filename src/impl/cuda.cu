@@ -20,6 +20,7 @@ static void match_impl(
     size_t n_images,
     cv::Size sz,
     double nxcorr_threshold,
+    Precision precision,
     std::optional<float> subpixel_step,
     cv::cuda::GpuMat& out,
     cv::cuda::Stream& _stream
@@ -85,21 +86,39 @@ static void match_impl(
     out.create(sz, cv::DataType<disparity_t>::type);
     out.setTo(INVALID_DISP, _stream);
 
+#ifdef BICOS_DEBUG
+    block = dim3(512);
+#else
     block = dim3(768);
+#endif
     grid = create_grid(block, sz);
 
-    if (subpixel_step.has_value())
-        agree_subpixel_kernel<TInput><<<grid, block, 0, mainstream>>>(
-            bicos_disp,
-            ptrs_dev,
-            n_images,
-            nxcorr_threshold,
-            subpixel_step.value(),
-            out
-        );
-    else
-        agree_kernel<TInput>
-            <<<grid, block, 0, mainstream>>>(bicos_disp, ptrs_dev, n_images, nxcorr_threshold, out);
+    // clang-format off
+
+    switch (precision) {
+        case Precision::SINGLE:
+            if (subpixel_step.has_value())
+                agree_subpixel_kernel<TInput, float, nxcorrf>
+                    <<<grid, block, 0, mainstream>>>(
+                        bicos_disp, ptrs_dev, n_images, nxcorr_threshold, subpixel_step.value(), out);
+            else
+                agree_kernel<TInput, float, nxcorrf>
+                    <<<grid, block, 0, mainstream>>>(
+                        bicos_disp, ptrs_dev, n_images, nxcorr_threshold, out);
+            break;
+        case Precision::DOUBLE:
+            if (subpixel_step.has_value())
+                agree_subpixel_kernel<TInput, double, nxcorrd>
+                    <<<grid, block, 0, mainstream>>>(
+                        bicos_disp, ptrs_dev, n_images, nxcorr_threshold, subpixel_step.value(), out);
+            else
+                agree_kernel<TInput, double, nxcorrd>
+                    <<<grid, block, 0, mainstream>>>(
+                        bicos_disp, ptrs_dev, n_images, nxcorr_threshold, out);
+            break;
+    }
+
+    // clang-format on
 
     assertCudaSuccess(cudaGetLastError());
 }
@@ -128,6 +147,7 @@ void match(
                     n_images,
                     sz,
                     cfg.nxcorr_thresh,
+                    cfg.precision,
                     cfg.subpixel_step,
                     disparity,
                     stream
@@ -139,6 +159,7 @@ void match(
                     n_images,
                     sz,
                     cfg.nxcorr_thresh,
+                    cfg.precision,
                     cfg.subpixel_step,
                     disparity,
                     stream
@@ -152,6 +173,7 @@ void match(
                     n_images,
                     sz,
                     cfg.nxcorr_thresh,
+                    cfg.precision,
                     cfg.subpixel_step,
                     disparity,
                     stream
@@ -163,6 +185,7 @@ void match(
                     n_images,
                     sz,
                     cfg.nxcorr_thresh,
+                    cfg.precision,
                     cfg.subpixel_step,
                     disparity,
                     stream
@@ -176,6 +199,7 @@ void match(
                     n_images,
                     sz,
                     cfg.nxcorr_thresh,
+                    cfg.precision,
                     cfg.subpixel_step,
                     disparity,
                     stream
@@ -187,6 +211,7 @@ void match(
                     n_images,
                     sz,
                     cfg.nxcorr_thresh,
+                    cfg.precision,
                     cfg.subpixel_step,
                     disparity,
                     stream

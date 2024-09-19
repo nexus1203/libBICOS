@@ -23,7 +23,8 @@ int main(int argc, char const* const* argv) {
     for (double thresh: { 0.5, 0.75, 0.9 }) {
         Config cfg { .nxcorr_thresh = thresh,
                      .subpixel_step = std::nullopt,
-                     .mode = TransformMode::LIMITED };
+                     .mode = TransformMode::LIMITED,
+                     .precision = Precision::DOUBLE };
 
         cv::Mat_<disparity_t> dhost, ddev_host;
         cv::cuda::GpuMat ddev;
