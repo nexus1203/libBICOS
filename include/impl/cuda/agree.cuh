@@ -103,7 +103,9 @@ __global__ void agree_kernel(
 
     TInput pix0[33], pix1[33];
 
-    const cv::cuda::PtrStepSz<TInput>*stack0 = stacks, *stack1 = stacks + n;
+    const cv::cuda::PtrStepSz<TInput>
+        *stack0 = stacks,
+        *stack1 = stacks + n;
 
     for (size_t t = 0; t < n; ++t) {
         pix0[t] = stack0[t](row, col);
@@ -149,7 +151,9 @@ __global__ void agree_subpixel_kernel(
 
     TInput pix0[33], pix1[33];
 
-    const cv::cuda::PtrStepSz<TInput>*stack0 = stacks, *stack1 = stacks + n;
+    const cv::cuda::PtrStepSz<TInput>
+        *stack0 = stacks,
+        *stack1 = stacks + n;
 
     for (size_t t = 0; t < n; ++t) {
         pix0[t] = stack0[t](row, col);
@@ -174,7 +178,7 @@ __global__ void agree_subpixel_kernel(
         // clang-format off
 
         for (size_t t = 0; t < n; ++t) {
-            TInput y0 = stack1[t](row, col1 - 1), 
+            TInput y0 = stack1[t](row, col1 - 1),
                    y1 = pix1[t],
                    y2 = stack1[t](row, col1 + 1);
 

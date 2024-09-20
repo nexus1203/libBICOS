@@ -92,7 +92,7 @@ void bench_agree_kernel(benchmark::State& state) {
         devinput.push_back(randmat_dev);
     }
 
-    RegisteredPtr devptr(devinput.data(), 2 * n, true);
+    cuda::RegisteredPtr devptr(devinput.data(), 2 * n, true);
 
     cv::cuda::GpuMat out(size, cv::DataType<disparity_t>::type);
 
@@ -128,7 +128,7 @@ void bench_agree_subpixel_kernel(benchmark::State& state) {
         devinput.push_back(randmat_dev);
     }
 
-    RegisteredPtr devptr(devinput.data(), 2 * n, true);
+    cuda::RegisteredPtr devptr(devinput.data(), 2 * n, true);
 
     cv::cuda::GpuMat out(size, cv::DataType<disparity_t>::type);
 
@@ -165,7 +165,7 @@ void bench_agree_subpixel_kernel_smem(benchmark::State& state) {
         devinput.push_back(randmat_dev);
     }
 
-    RegisteredPtr devptr(devinput.data(), 2 * n, true);
+    cuda::RegisteredPtr devptr(devinput.data(), 2 * n, true);
 
     cv::cuda::GpuMat out(size, cv::DataType<disparity_t>::type);
 
@@ -210,7 +210,7 @@ void bench_bicos_kernel(benchmark::State& state) {
 
     cuda::StepBuf<TDescriptor> ld_dev(ld), rd_dev(rd);
 
-    RegisteredPtr lptr(&ld_dev, 1, true), rptr(&rd_dev, 1, true);
+    cuda::RegisteredPtr lptr(&ld_dev, 1, true), rptr(&rd_dev, 1, true);
 
     cv::cuda::GpuMat out(size, cv::DataType<int16_t>::type);
 
@@ -250,10 +250,10 @@ void bench_descriptor_transform_kernel(benchmark::State& state) {
         devinput.push_back(randmat_dev);
     }
 
-    RegisteredPtr inptr(devinput.data(), n, true);
+    cuda::RegisteredPtr inptr(devinput.data(), n, true);
 
     cuda::StepBuf<TDescriptor> out(size);
-    RegisteredPtr outptr(&out);
+    cuda::RegisteredPtr outptr(&out);
 
     const dim3 block(1024);
     const dim3 grid = create_grid(block, size);

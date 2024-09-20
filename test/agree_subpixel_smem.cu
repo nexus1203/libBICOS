@@ -45,7 +45,7 @@ int main(void) {
         devinput.push_back(randmat_dev);
     }
 
-    RegisteredPtr devptr(devinput.data(), 2 * n, true);
+    cuda::RegisteredPtr devptr(devinput.data(), 2 * n, true);
 
     cv::Mat_<int16_t> randdisp(randsize);
     cv::randu(randdisp, -1, randsize.width);

@@ -29,6 +29,7 @@
 
 using namespace BICOS;
 using namespace test;
+using namespace impl;
 
 int main(int argc, char const* const* argv) {
     std::vector<SequenceEntry> lseq, rseq;
@@ -52,14 +53,14 @@ int main(int argc, char const* const* argv) {
 
     cv::Mat_<int16_t> raw_gpu_host, raw_host;
 
-    RegisteredPtr dptr(dev.data(), 2 * n, true);
+    cuda::RegisteredPtr dptr(dev.data(), 2 * n, true);
 
     const dim3 block(1024);
     const dim3 grid = create_grid(block, sz);
 
     impl::cuda::StepBuf<uint128_t> lddev(sz), rddev(sz);
 
-    RegisteredPtr ldptr(&lddev), rdptr(&rddev);
+    cuda::RegisteredPtr ldptr(&lddev), rdptr(&rddev);
 
     cudaStream_t lstream, rstream, mainstream;
     cudaStreamCreate(&lstream);

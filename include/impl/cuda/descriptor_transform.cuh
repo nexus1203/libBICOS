@@ -36,11 +36,7 @@ __global__ void descriptor_transform_kernel(
     if (size.width <= col || size.height <= row)
         return;
 
-    // caching necessary?
-
     TInput pix[33];
-    // TInput* pix = new TInput[n];//STACKALLOC(n, TInput);
-    //TInput* pix = ((TInput*)timeseries) + n * threadIdx.x;
     Bitfield<TDescriptor> bf;
 
     double av = 0.0f;

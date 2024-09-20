@@ -22,6 +22,10 @@
 #include <opencv2/core.hpp>
 #include <opencv2/core/cuda/common.hpp>
 
+#include "common.hpp"
+
+namespace BICOS::impl::cuda {
+
 #define assertCudaSuccess(call) \
     do { \
         cudaError_t err = (call); \
@@ -71,3 +75,5 @@ public:
         return _pdev + rhs;
     }
 };
+
+} // namespace BICOS::impl::cuda

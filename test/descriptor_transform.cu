@@ -56,10 +56,10 @@ int main(void) {
         rand_dev.push_back(randmat_dev);
     }
 
-    RegisteredPtr rand_devptr(rand_dev.data(), n, true);
+    cuda::RegisteredPtr rand_devptr(rand_dev.data(), n, true);
 
     cuda::StepBuf<DESCRIPTOR_TYPE> gpuout(randsize);
-    RegisteredPtr gpuout_devptr(&gpuout);
+    cuda::RegisteredPtr gpuout_devptr(&gpuout);
 
     const dim3 block(1024);
     const dim3 grid = create_grid(block, randsize);
