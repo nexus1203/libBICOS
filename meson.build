@@ -53,15 +53,20 @@ libs = both_libraries(
     override_options: ['cpp_std=c++20'],
 )
 
-executable(
-    'bicos-cli',
-    sources: ['src/cli.cpp', 'src/fileutils.cpp'],
-    include_directories: incls,
-    dependencies: deps + dependency('cxxopts'),
-    link_with: libs,
-    install: false,
-    override_options: ['cpp_std=c++20'],
-)
+cxxopts = dependency('cxxopts')
+if cxxopts.found()
+    executable(
+        'bicos-cli',
+        sources: ['src/cli.cpp', 'src/fileutils.cpp'],
+        include_directories: incls,
+        dependencies: deps + dependency('cxxopts'),
+        link_with: libs,
+        install: true,
+        override_options: ['cpp_std=c++20'],
+    )
+else
+    message('library cxxopts not found, skipping CLI build')
+endif
 
 if impl == 'cuda'
     datdir = join_paths(meson.project_source_root(), 'data')
@@ -172,7 +177,7 @@ if googlebench.found()
         )
     endif
 else
-    message('library google/benchmark not found, skipping benchmarks')
+    message('library google/benchmark not found, skipping benchmark build')
 endif
 
 configure_file(
@@ -195,4 +200,6 @@ if pkg.found()
         url: 'https://github.com/JMUWRobotics/libBICOS',
         subdirs: 'BICOS'
     )
+else
+    message('pkg-config not found, skipping .pc generation')
 endif

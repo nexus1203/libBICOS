@@ -32,6 +32,11 @@
 
 using namespace BICOS;
 
+#define LICENSE_HEADER "libBICOS  Copyright (C) 2024  Robotics Group @ JMU\n"\
+                       "This program is free software, and you are welcome to redistribute\n"\
+                       "it under the conditions of the GNU LGPL-3.0-or-later license.\n"\
+                       "Refer to https://github.com/JMUWRobotics/libBICOS for details.\n"
+
 int main(int argc, char const* const* argv) {
     cxxopts::Options opts(argv[0], "cli to process images with BICOS");
 
@@ -60,6 +65,8 @@ int main(int argc, char const* const* argv) {
         std::cout << opts.help() << std::endl;
         return 0;
     }
+
+    std::cout << LICENSE_HEADER << std::endl;
 
     std::filesystem::path folder0 = args["folder0"].as<std::string>();
     std::optional<std::filesystem::path> folder1 = std::nullopt;
