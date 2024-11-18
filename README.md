@@ -10,10 +10,11 @@ This is the implementation of the corresponding paper to appear in [Optical 3D M
 
 Dependencies:
 
-- `gcc` or equivalent C compiler with C++20 support (build)
+- `gcc` or equivalent C compiler with C++20 (C++17 experimental) support (build)
 - [`meson`](https://github.com/mesonbuild/meson) >= 1.1.0 (build)
 - `opencv 4.x` with cuda support
 - `cuda 12.x` including toolkit 
+- [`fmt`](https://github.com/fmtlib/fmt) (C++17)
 - [`cxxopts`](https://github.com/jarro2783/cxxopts) (optional, for cli)
 - [`benchmark`](https://github.com/google/benchmark) (optional, for executing benchmarks)
 

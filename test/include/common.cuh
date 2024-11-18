@@ -22,7 +22,7 @@
 #include <opencv2/core/cuda/common.hpp>
 #include <random>
 #include <iostream>
-#include <format>
+#include "compat.hpp"
 
 #include "stepbuf.hpp"
 
@@ -63,7 +63,7 @@ bool equals(const cv::Mat_<T>& a, const cv::Mat_<T>& b) {
                 continue;
 
             if (va != vb) {
-                std::cerr << std::format("{} != {} at ({},{})\n", va, vb, col, row);
+                std::cerr << BICOS::format("{} != {} at ({},{})\n", va, vb, col, row);
                 return false;
             }
         }
@@ -78,7 +78,21 @@ bool equals(const impl::cpu::StepBuf<T>& a, const impl::cpu::StepBuf<T>& b, cv::
         for (int col = 0; col < sz.width; ++col) {
             T va = a.row(row)[col], vb = b.row(row)[col];
             if (va != vb) {
-                std::cerr << std::format("{} != {} at ({},{})\n", va, vb, col, row);
+                const uint8_t *hexa = (uint8_t*)&va,
+                              *hexb = (uint8_t*)&vb;
+
+                auto f = std::cout.flags();
+
+                std::cout << std::hex << "0x";
+                for (size_t i = 0; i < sizeof(T); ++i)
+                    std::cout << hexa[i];
+                std::cout << " != 0x";
+                for (size_t i = 0; i < sizeof(T); ++i)
+                    std::cout << hexb[i];
+                std::cout << " at (" << col << "," << row << ")\n";
+
+                std::cout.flags(f);
+
                 return false;
             }
         }

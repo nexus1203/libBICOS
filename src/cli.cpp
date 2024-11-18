@@ -17,6 +17,7 @@
  */
 
 #include "common.hpp"
+
 #include <chrono>
 #include <cxxopts.hpp>
 #include <filesystem>
@@ -25,7 +26,6 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/calib3d.hpp>
 #include <optional>
-#include <stdexcept>
 
 #ifdef BICOS_CUDA
     #include <opencv2/core/cuda.hpp>
@@ -33,6 +33,7 @@
 
 #include "fileutils.hpp"
 #include "match.hpp"
+#include "compat.hpp"
 
 #define DELTA_MS(name) double delta_##name = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - tick).count() / 1000.0
 
@@ -86,7 +87,7 @@ int main(int argc, char const* const* argv) {
         q_store = args["qmatrix"].as<std::string>();
 
         if (!std::filesystem::exists(q_store.value()))
-            throw std::invalid_argument(std::format("'{}' does not exist", q_store.value().string()));
+            throw std::invalid_argument(format("'{}' does not exist", q_store.value().string()));
     }
 
     if (args.count("folder1"))
@@ -109,7 +110,7 @@ int main(int argc, char const* const* argv) {
         }
 
         if (lstack.size() != rstack.size())
-            throw std::invalid_argument(std::format("Left stack: {}, right stack: {} images", lstack.size(), rstack.size()));
+            throw std::invalid_argument(format("Left stack: {}, right stack: {} images", lstack.size(), rstack.size()));
 
         std::cout << "Loaded " << lstack.size() + rstack.size() << " images total\n";
     }

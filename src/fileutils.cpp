@@ -18,19 +18,23 @@
 
 #include "fileutils.hpp"
 #include "common.hpp"
+#include "compat.hpp"
 
 #include <filesystem>
-#include <format>
+#include <fstream>
 #include <iostream>
-#include <ostream>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+#include <ostream>
 #include <stdexcept>
-#include <fstream>
 
 namespace BICOS {
 
-void save_pointcloud(const cv::Mat3f points, const cv::Mat_<BICOS::disparity_t>& disparity, std::filesystem::path outfile) {
+void save_pointcloud(
+    const cv::Mat3f points,
+    const cv::Mat_<BICOS::disparity_t>& disparity,
+    std::filesystem::path outfile
+) {
     if (points.size() != disparity.size())
         throw std::invalid_argument("save_pointcloud: invalid sizes");
 
@@ -45,9 +49,7 @@ void save_pointcloud(const cv::Mat3f points, const cv::Mat_<BICOS::disparity_t>&
 
             cv::Vec3f point = points(row, col);
 
-            float x = point[0],
-                  y = point[1], 
-                  z = point[2];
+            float x = point[0], y = point[1], z = point[2];
 
             if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z)) {
                 n_nonfinite++;
@@ -86,14 +88,17 @@ void save_disparity(const cv::Mat_<BICOS::disparity_t>& disparity, std::filesyst
         std::cout << "Saved floating-point disparity to\t" << outfile << std::endl;
 }
 
-static void read_single_dir(auto d, bool gray, auto& vec) {
+static void
+read_single_dir(const std::filesystem::path& d, bool gray, std::vector<SequenceEntry>& vec) {
     for (auto const& e: std::filesystem::directory_iterator(d)) {
         const std::filesystem::path p = e.path();
         size_t l;
         auto idx = stoul(p.filename().string(), &l);
 
         if (l == 0)
-            throw std::invalid_argument("Expecting numbered files with names NN.png; e.g 0.png, 1.png...");
+            throw std::invalid_argument(
+                "Expecting numbered files with names NN.png; e.g 0.png, 1.png..."
+            );
 
         cv::Mat m = cv::imread(p, gray ? cv::IMREAD_GRAYSCALE : cv::IMREAD_UNCHANGED);
         if (4 == m.channels()) {
@@ -120,7 +125,8 @@ void read_sequence(
         read_single_dir(image_dir1.value(), force_grayscale, rseq);
     } else {
         for (auto const& entry: fs::directory_iterator(image_dir0)) {
-            static const std::string errmsg = "Expecting numbered files with names NN_{left,right}.png; e.g.: 5_left.png, 10_right.png...";
+            static const std::string errmsg =
+                "Expecting numbered files with names NN_{left,right}.png; e.g.: 5_left.png, 10_right.png...";
 
             const fs::path path = entry.path();
             const std::string fname = path.filename().string();
@@ -150,7 +156,7 @@ void read_sequence(
 
     if (lseq.size() != rseq.size()) {
         throw std::invalid_argument(
-            std::format("Unequal number of images; left: {}, right: {}", lseq.size(), rseq.size())
+            BICOS::format("Unequal number of images; left: {}, right: {}", lseq.size(), rseq.size())
         );
     }
 }

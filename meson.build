@@ -18,11 +18,41 @@
 project('libBICOS', 'cpp', version: '1.2.0-devel', license: 'LGPL-3.0-or-later', license_files: ['COPYING', 'COPYING.LESSER'], meson_version: '>=1.1.0')
 
 pkg = import('pkgconfig')
+cc = meson.get_compiler('cpp')
+
+cppver = cc.first_supported_argument('-std=c++20', '-std=c++17')
+if cppver.length() == 0
+    error('At least c++17 is required')
+else
+    cppver = cppver[0].split('=')[-1]
+    message('Building with standard: ' + cppver)
+endif
+
+override_options = [f'cpp_std=@cppver@']
 
 impl = get_option('implementation')
 srcs = files('src/lib.cpp', 'src/exception.cpp')
 incls = include_directories('include')
 deps = [dependency('opencv4')]
+
+has_builtin_format = cc.compiles('''
+    #include <format>
+    std::string fmtcheck() { return std::format("Recent c++ standard, anyone?"); }
+''', name: 'std::format', args: f'-std=@cppver@')
+
+has_builtin_popcount = cc.compiles('''
+    #include <bit>
+    int popcheck() { return std::popcount(69420U); }
+''', name: 'std::popcount', args: f'-std=@cppver@')
+
+if not has_builtin_format
+    deps += dependency('fmt')
+    add_project_arguments('-DBICOS_FMT_FALLBACK', language: ['cpp', 'cuda'])
+endif
+
+if not has_builtin_popcount
+    add_project_arguments('-DBICOS_POPCNT_FALLBACK', language: ['cpp', 'cuda'])
+endif
 
 is_debug = get_option('buildtype') in ['debug', 'debugoptimized']
 if is_debug
@@ -50,7 +80,7 @@ libs = both_libraries(
     include_directories: incls,
     dependencies: deps,
     install: true,
-    override_options: ['cpp_std=c++20'],
+    override_options: override_options,
 )
 
 cxxopts = dependency('cxxopts', required: false, not_found_message: 'library cxxopts not found, skipping CLI build')
@@ -62,7 +92,7 @@ if cxxopts.found()
         dependencies: deps + cxxopts,
         link_with: libs,
         install: true,
-        override_options: ['cpp_std=c++20'],
+        override_options: override_options,
     )
 endif
 
@@ -70,6 +100,8 @@ if impl == 'cuda'
     datdir = join_paths(meson.project_source_root(), 'data')
     srcs = files('src/impl/cuda.cu', 'src/impl/cpu.cpp', 'src/fileutils.cpp', 'src/exception.cpp')
     incls = [incls, include_directories('test/include')]
+
+    override_options += f'cuda_std=@cppver@'
 
     foreach input_depth : [8, 16]
         foreach descriptor_depth : [32, 64, 128]
@@ -87,7 +119,7 @@ if impl == 'cuda'
                         include_directories: incls,
                         cuda_args: ['-DBICOS_CUDA', f'-DINPUT_TYPE=uint@input_depth@_t', f'-DDESCRIPTOR_TYPE=uint@descriptor_depth@_t', f'-DTRANSFORM_LIMITED=@limited@'],
                         cpp_args: '-DBICOS_CPU',
-                        override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
+                        override_options: override_options,
                     )
                 )
             endforeach
@@ -105,7 +137,7 @@ if impl == 'cuda'
                     include_directories: incls,
                     cuda_args: ['-DBICOS_CUDA', f'-DINPUT_TYPE=uint@input_depth@_t', f'-DTEST_SUBPIXEL=@agree_cfg@'],
                     cpp_args: '-DBICOS_CPU',
-                    override_options: ['cpp_std=c++20', 'cuda_std=c++20']
+                    override_options: override_options
                 )
             )            
         endforeach
@@ -117,7 +149,7 @@ if impl == 'cuda'
                 include_directories: incls,
                 cuda_args: ['-DBICOS_CUDA', f'-DINPUT_TYPE=uint@input_depth@_t'],
                 cpp_args: '-DBICOS_CPU',
-                override_options: ['cpp_std=c++20', 'cuda_std=c++20']
+                override_options: override_options
             )
         )
     endforeach
@@ -131,7 +163,7 @@ if impl == 'cuda'
                 include_directories: incls,
                 cuda_args: ['-DBICOS_CUDA', f'-DDESCRIPTOR_TYPE=uint@descriptor_depth@_t'],
                 cpp_args: '-DBICOS_CPU',
-                override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
+                override_options: override_options,
             )
         )
     endforeach
@@ -145,7 +177,7 @@ if impl == 'cuda'
                 include_directories: incls,
                 cuda_args: '-DBICOS_CUDA',
                 cpp_args: '-DBICOS_CPU',
-                override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
+                override_options: override_options,
             ),
             args: [datdir / 'left', datdir / 'right'],
             timeout: -1
@@ -159,7 +191,7 @@ if impl == 'cuda'
             include_directories: incls,
             cuda_args: '-DBICOS_CUDA',
             cpp_args: '-DBICOS_CPU',
-            override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
+            override_options: override_options,
         ),
         args: [datdir / 'left', datdir / 'right'],
         timeout: 150
@@ -172,7 +204,7 @@ if impl == 'cuda'
             include_directories: incls,
             cuda_args: '-DBICOS_CUDA',
             cpp_args: '-DBICOS_CPU',
-            override_options: ['cpp_std=c++20', 'cuda_std=c++20'],
+            override_options: override_options,
         )
     )
 
@@ -205,7 +237,7 @@ if googlebench.found()
                 dependencies: deps,
                 include_directories: incls,
                 cuda_args: f'-DSOURCE_ROOT="@sourceroot@"',
-                override_options: ['cpp_std=c++20', 'cuda_std=c++20']
+                override_options: override_options
             ),
             args: [f'--benchmark_context=available_gpus=@available_gpus@']
         )
