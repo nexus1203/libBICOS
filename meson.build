@@ -25,7 +25,6 @@ if cppver.length() == 0
     error('At least c++17 is required')
 else
     cppver = cppver[0].split('=')[-1]
-    message('Building with standard: ' + cppver)
 endif
 
 override_options = [f'cpp_std=@cppver@']
