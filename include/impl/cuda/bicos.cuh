@@ -24,18 +24,18 @@
 namespace BICOS::impl::cuda {
 
 static __device__ __forceinline__ int ham(uint32_t a, uint32_t b) {
-    return __builtin_popcount(a ^ b);
+    return __popc(a ^ b);
 }
 
 static __device__ __forceinline__ int ham(uint64_t a, uint64_t b) {
-    return __builtin_popcountll(a ^ b);
+    return __popcll(a ^ b);
 }
 
 #ifdef BICOS_CUDA_HAS_UINT128
 static __device__ __forceinline__ int ham(uint128_t a, uint128_t b) {
     const uint128_t diff = a ^ b;
-    int lo = __builtin_popcountll((uint64_t)(diff & 0xFFFFFFFFFFFFFFFFUL));
-    int hi = __builtin_popcountll((uint64_t)(diff >> 64));
+    int lo = __popcll((uint64_t)(diff & 0xFFFFFFFFFFFFFFFFUL));
+    int hi = __popcll((uint64_t)(diff >> 64));
     return lo + hi;
 }
 #endif
