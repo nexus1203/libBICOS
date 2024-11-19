@@ -31,12 +31,14 @@ static __device__ __forceinline__ int ham(uint64_t a, uint64_t b) {
     return __builtin_popcountll(a ^ b);
 }
 
+#ifdef BICOS_CUDA_HAS_UINT128
 static __device__ __forceinline__ int ham(uint128_t a, uint128_t b) {
     const uint128_t diff = a ^ b;
     int lo = __builtin_popcountll((uint64_t)(diff & 0xFFFFFFFFFFFFFFFFUL));
     int hi = __builtin_popcountll((uint64_t)(diff >> 64));
     return lo + hi;
 }
+#endif
 
 template<typename TDescriptor, TDescriptor (*FLoad)(const TDescriptor*)>
 static __device__ __forceinline__ int16_t

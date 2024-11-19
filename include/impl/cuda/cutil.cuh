@@ -102,11 +102,13 @@ __device__ __forceinline__ T load_datacache(const T* p) {
     return __ldg(p);
 }
 
+#ifdef BICOS_CUDA_HAS_UINT128
 template<>
 __device__ __forceinline__ __uint128_t load_datacache<__uint128_t>(const __uint128_t* _p) {
     auto p = reinterpret_cast<const uint64_t*>(_p);
     return (__uint128_t(__ldg(p + 1)) << 64) | __uint128_t(__ldg(p));
 }
+#endif
 
 template<typename T>
 __device__ __forceinline__ T load_deref(const T* p) {
