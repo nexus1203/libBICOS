@@ -69,6 +69,7 @@ if impl == 'cpu'
 elif impl == 'cuda'
     add_languages('cuda', native: false)
     add_project_arguments('-DBICOS_CUDA', language: ['cpp', 'cuda'])
+    override_options += f'cuda_std=@cppver@'
     srcs += files('src/impl/cuda.cu')
 
     has_builtin_uint128 = meson.get_compiler('cuda').compiles('''
