@@ -206,12 +206,14 @@ void match(
             else
                 match_impl<uint16_t, uint64_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, disparity, stream);
             break;
+#ifdef BICOS_CUDA_HAS_UINT128
         case 65 ... 128:
             if (depth == CV_8U)
                 match_impl<uint8_t, uint128_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, disparity, stream);
             else
                 match_impl<uint16_t, uint128_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, disparity, stream);
             break;
+#endif
         default:
             throw std::invalid_argument("input stacks too large, exceeding 128 bits");
     }

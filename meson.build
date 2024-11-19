@@ -67,9 +67,19 @@ if impl == 'cpu'
     add_project_arguments('-DBICOS_CPU', language: 'cpp')
     srcs += files('src/impl/cpu.cpp')
 elif impl == 'cuda'
-    add_languages('cuda')
+    add_languages('cuda', native: false)
     add_project_arguments('-DBICOS_CUDA', language: ['cpp', 'cuda'])
     srcs += files('src/impl/cuda.cu')
+
+    has_builtin_uint128 = meson.get_compiler('cuda').compiles('''
+        __device__ __uint128_t longlonglong() { return __uint128_t(0xBAADF00D); }
+    ''', name: 'cuda __uint128_t', args: f'-std=@cppver@')
+
+    if has_builtin_uint128
+        add_project_arguments('-DBICOS_CUDA_HAS_UINT128', language: ['cpp', 'cuda'])
+    else
+        warning('CUDA runtime does not support 128-bit integers. Compiling without 128-bit support.')
+    endif
 else
     error('unsupported implementation')
 endif
@@ -103,8 +113,13 @@ if impl == 'cuda'
 
     override_options += f'cuda_std=@cppver@'
 
+    depths = [32, 64]
+    if has_builtin_uint128
+        depths += 128
+    endif
+
     foreach input_depth : [8, 16]
-        foreach descriptor_depth : [32, 64, 128]
+        foreach descriptor_depth : depths
             testname = f'descriptor_transform_@input_depth@_@descriptor_depth@'
             foreach limited : [0, 1]
                 if limited == 0
@@ -154,7 +169,7 @@ if impl == 'cuda'
         )
     endforeach
 
-    foreach descriptor_depth : [32, 64, 128]
+    foreach descriptor_depth : depths
         testname = f'bicos_@descriptor_depth@'
         test(testname,
             executable('test_' + testname,
