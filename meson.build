@@ -112,8 +112,6 @@ if impl == 'cuda'
     srcs = files('src/impl/cuda.cu', 'src/impl/cpu.cpp', 'src/fileutils.cpp', 'src/exception.cpp')
     incls = [incls, include_directories('test/include')]
 
-    override_options += f'cuda_std=@cppver@'
-
     depths = [32, 64]
     if has_builtin_uint128
         depths += 128
