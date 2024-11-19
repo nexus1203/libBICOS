@@ -369,25 +369,32 @@ BENCHMARK(bench_agree_subpixel_kernel_smem<uint8_t>);
 BENCHMARK(bench_agree_subpixel_kernel_smem<uint16_t>);
 
 BENCHMARK(bench_bicos_kernel<uint32_t>);
-BENCHMARK(bench_bicos_kernel<uint64_t>);
-BENCHMARK(bench_bicos_kernel<uint128_t>);
 BENCHMARK(bench_bicos_kernel_smem<uint32_t>);
+BENCHMARK(bench_bicos_kernel<uint64_t>);
 BENCHMARK(bench_bicos_kernel_smem<uint64_t>);
+
+#ifdef BICOS_CUDA_HAS_UINT128
+BENCHMARK(bench_bicos_kernel<uint128_t>);
 BENCHMARK(bench_bicos_kernel_smem<uint128_t>);
+#endif
 
 BENCHMARK(bench_descriptor_transform_kernel<uint8_t, uint32_t, TransformMode::LIMITED>);
 BENCHMARK(bench_descriptor_transform_kernel<uint16_t, uint32_t, TransformMode::LIMITED>);
 BENCHMARK(bench_descriptor_transform_kernel<uint8_t, uint64_t, TransformMode::LIMITED>);
 BENCHMARK(bench_descriptor_transform_kernel<uint16_t, uint64_t, TransformMode::LIMITED>);
+#ifdef BICOS_CUDA_HAS_UINT128
 BENCHMARK(bench_descriptor_transform_kernel<uint8_t, uint128_t, TransformMode::LIMITED>);
 BENCHMARK(bench_descriptor_transform_kernel<uint16_t, uint128_t, TransformMode::LIMITED>);
+#endif
 
 BENCHMARK(bench_descriptor_transform_kernel<uint8_t, uint32_t, TransformMode::FULL>);
 BENCHMARK(bench_descriptor_transform_kernel<uint16_t, uint32_t, TransformMode::FULL>);
 BENCHMARK(bench_descriptor_transform_kernel<uint8_t, uint64_t, TransformMode::FULL>);
 BENCHMARK(bench_descriptor_transform_kernel<uint16_t, uint64_t, TransformMode::FULL>);
+#ifdef BICOS_CUDA_HAS_UINT128
 BENCHMARK(bench_descriptor_transform_kernel<uint8_t, uint128_t, TransformMode::FULL>);
 BENCHMARK(bench_descriptor_transform_kernel<uint16_t, uint128_t, TransformMode::FULL>);
+#endif
 
 BENCHMARK(bench_integration)
     ->ArgsProduct({

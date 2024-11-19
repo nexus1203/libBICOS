@@ -199,29 +199,31 @@ if impl == 'cuda'
         )
     endif
 
-    test('integration_raw',
-        executable('test_integration_raw',
-            sources: srcs + 'test/integration_raw.cu',
-            dependencies: deps,
-            include_directories: incls,
-            cuda_args: '-DBICOS_CUDA',
-            cpp_args: '-DBICOS_CPU',
-            override_options: override_options,
-        ),
-        args: [datdir / 'left', datdir / 'right'],
-        timeout: 150
-    )
-
-    test('cutil',
-        executable('test_cutil',
-            sources: srcs + 'test/cutil.cu',
-            dependencies: deps,
-            include_directories: incls,
-            cuda_args: '-DBICOS_CUDA',
-            cpp_args: '-DBICOS_CPU',
-            override_options: override_options,
+    if has_builtin_uint128
+        test('integration_raw',
+            executable('test_integration_raw',
+                sources: srcs + 'test/integration_raw.cu',
+                dependencies: deps,
+                include_directories: incls,
+                cuda_args: '-DBICOS_CUDA',
+                cpp_args: '-DBICOS_CPU',
+                override_options: override_options,
+            ),
+            args: [datdir / 'left', datdir / 'right'],
+            timeout: 150
         )
-    )
+
+        test('cutil',
+            executable('test_cutil',
+                sources: srcs + 'test/cutil.cu',
+                dependencies: deps,
+                include_directories: incls,
+                cuda_args: '-DBICOS_CUDA',
+                cpp_args: '-DBICOS_CPU',
+                override_options: override_options,
+            )
+        )
+    endif
 
     if impl == 'cuda' and cxxopts.found()
         test('regress_cuda',
