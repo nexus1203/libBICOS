@@ -197,41 +197,40 @@ if impl == 'cuda'
         )
     endif
 
-    if has_builtin_uint128
-        test('integration_raw',
-            executable('test_integration_raw',
-                sources: srcs + 'test/integration_raw.cu',
-                dependencies: deps,
-                include_directories: incls,
-                cuda_args: '-DBICOS_CUDA',
-                cpp_args: '-DBICOS_CPU',
-                override_options: override_options,
-            ),
-            args: [datdir / 'left', datdir / 'right'],
-            timeout: 150
-        )
+    test('integration_raw',
+        executable('test_integration_raw',
+            sources: srcs + 'test/integration_raw.cu',
+            dependencies: deps,
+            include_directories: incls,
+            cuda_args: '-DBICOS_CUDA',
+            cpp_args: '-DBICOS_CPU',
+            override_options: override_options,
+        ),
+        args: [datdir / 'left', datdir / 'right'],
+        timeout: 150,
+        should_fail: not has_builtin_uint128
+    )
 
-        test('cutil',
-            executable('test_cutil',
-                sources: srcs + 'test/cutil.cu',
-                dependencies: deps,
-                include_directories: incls,
-                cuda_args: '-DBICOS_CUDA',
-                cpp_args: '-DBICOS_CPU',
-                override_options: override_options,
-            )
-        )
+    test('cutil',
+        executable('test_cutil',
+            sources: srcs + 'test/cutil.cu',
+            dependencies: deps,
+            include_directories: incls,
+            cuda_args: '-DBICOS_CUDA',
+            cpp_args: '-DBICOS_CPU',
+            override_options: override_options
+        ),
+        should_fail: not has_builtin_uint128
+    )
 
-        if impl == 'cuda' and cxxopts.found()
-            test('regress_cuda',
-                find_program('test/regress.bash'),
-                depends: cli_tgt,
-                workdir: meson.current_source_dir(),
-                verbose: true
-            )
-        endif
-    else
-        message('No 128-bit: integration tests are disabled.')
+    if impl == 'cuda' and cxxopts.found()
+        test('regress_cuda',
+            find_program('test/regress.bash'),
+            depends: cli_tgt,
+            workdir: meson.current_source_dir(),
+            should_fail: not has_builtin_uint128,
+            verbose: true
+        )
     endif
 endif
 
