@@ -19,11 +19,9 @@ Dependencies:
 - [`benchmark`](https://github.com/google/benchmark) (optional, for executing benchmarks)
 
 ```bash
-$ git clone https://github.com/JMUWRobotics/libBICOS
+# recommended: clone the most recent release
+$ git clone --depth 1 --branch v1.2.1 https://github.com/JMUWRobotics/libBICOS
 $ cd libBICOS
-
-# optional but recommended, pick a release depending on your needs
-$ git checkout v1.2.0
 
 $ meson setup builddir --buildtype release
 
