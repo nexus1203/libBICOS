@@ -18,7 +18,8 @@
 project('libBICOS', 'cpp', version: '1.2.0-devel', license: 'LGPL-3.0-or-later', license_files: ['COPYING', 'COPYING.LESSER'], meson_version: '>=1.1.0')
 
 pkg = import('pkgconfig')
-cc = meson.get_compiler('cpp')
+fs  = import('fs')
+cc  = meson.get_compiler('cpp')
 
 cppver = cc.first_supported_argument('-std=c++20', '-std=c++17')
 if cppver.length() == 0
@@ -93,7 +94,7 @@ libs = both_libraries(
     override_options: override_options,
 )
 
-cxxopts = dependency('cxxopts', required: false, not_found_message: 'library cxxopts not found, skipping CLI build')
+cxxopts = dependency('cxxopts', required: false, not_found_message: 'library cxxopts not found, skipping CLI build.')
 if cxxopts.found()
     cli_tgt = executable(
         'bicos-cli',
@@ -197,19 +198,6 @@ if impl == 'cuda'
         )
     endif
 
-    test('integration_raw',
-        executable('test_integration_raw',
-            sources: srcs + 'test/integration_raw.cu',
-            dependencies: deps,
-            include_directories: incls,
-            cuda_args: '-DBICOS_CUDA',
-            cpp_args: '-DBICOS_CPU',
-            override_options: override_options,
-        ),
-        args: [datdir / 'left', datdir / 'right'],
-        timeout: 150
-    )
-
     test('cutil',
         executable('test_cutil',
             sources: srcs + 'test/cutil.cu',
@@ -221,18 +209,36 @@ if impl == 'cuda'
         )
     )
 
-    if impl == 'cuda' and cxxopts.found()
-        test('regress_cuda',
-            find_program('test/regress.bash'),
-            depends: cli_tgt,
-            workdir: meson.current_source_dir(),
-            should_fail: not has_builtin_uint128,
-            verbose: true
+    has_data = fs.is_dir(datdir / 'left') and fs.is_dir(datdir / 'right')
+    if has_data
+        test('integration_raw',
+            executable('test_integration_raw',
+                sources: srcs + 'test/integration_raw.cu',
+                dependencies: deps,
+                include_directories: incls,
+                cuda_args: '-DBICOS_CUDA',
+                cpp_args: '-DBICOS_CPU',
+                override_options: override_options,
+            ),
+            args: [datdir / 'left', datdir / 'right'],
+            timeout: 150
         )
+
+        if impl == 'cuda' and cxxopts.found()
+            test('regress_cuda',
+                find_program('test/regress.bash'),
+                depends: cli_tgt,
+                workdir: meson.current_source_dir(),
+                should_fail: not has_builtin_uint128,
+                verbose: true
+            )
+        endif
+    else
+        message('Test data not available, run \'data/prepare.sh\' and reconfigure for regress tests.')
     endif
 endif
 
-googlebench = dependency('benchmark', required: false, not_found_message: 'library google/benchmark not found, skipping benchmark build')
+googlebench = dependency('benchmark', required: false, not_found_message: 'library google/benchmark not found, skipping benchmark build.')
 if googlebench.found()
     sourceroot = meson.project_source_root()
     deps += googlebench
@@ -282,5 +288,5 @@ if pkg.found()
         subdirs: 'BICOS'
     )
 else
-    message('pkg-config not found, skipping .pc generation')
+    message('pkg-config not found, skipping .pc generation.')
 endif

@@ -41,10 +41,10 @@ The versioning scheme of the library is [Semantic Versioning](https://semver.org
 After installing, you can include `/usr/local/include/BICOS/*` and link against `/usr/local/lib/libBICOS.so`.
 
 ### Commandline-interface
-Alternatively, this project builds `bicos-cli`. To give you a feel for the parameters of BICOS, there is an example dataset provided in [data](/data) with rectified imagery from a stereo camera, where images per side only differ in the projected light pattern.
+Alternatively, this project builds `bicos-cli`. To give you a feel for the parameters of BICOS, you can download an example dataset with [`data/prepare.sh`](/data/prepare.sh) that contains rectified imagery from a stereo camera, where images per side only differ in the projected light pattern.
 Calling:
 ```console
-$ bicos-cli data/{left,right} -q data/Q.cvstore --threshold 0.98 --stacksize 12 --variance 2.5 --step 0.1 -o /tmp/result.png
+$ bicos-cli data/{left,right} -q data/Q.yaml --threshold 0.96 --stacksize 33 --variance 2.0 --step 0.1 -o /tmp/result.png
 ```
 will get you:
 
@@ -54,7 +54,7 @@ will get you:
 #### Pointcloud
 ![Example pointcloud](/example-pcl.png)
 
-While only requiring ~70ms (RTX4090) and ~1.5GB VRAM for matching on two stacks of 12 images each.
+While only requiring ~110ms (RTX4090) and ~1.6GB VRAM for matching on two stacks of 33 images each.
 
 The most significant parameters can be summarized:
 
