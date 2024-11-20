@@ -18,6 +18,7 @@
 
 #include "common.hpp"
 #include "cuda.hpp"
+#include "compat.hpp"
 
 #include "impl/cuda/agree.cuh"
 #include "impl/cuda/bicos.cuh"
@@ -215,7 +216,7 @@ void match(
             break;
 #endif
         default:
-            throw std::invalid_argument("input stacks too large, exceeding 128 bits");
+            throw std::invalid_argument(BICOS::format("input stacks too large, would require {} bits", required_bits));
     }
 
     // clang-format on
