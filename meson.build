@@ -207,8 +207,7 @@ if impl == 'cuda'
             override_options: override_options,
         ),
         args: [datdir / 'left', datdir / 'right'],
-        timeout: 150,
-        should_fail: not has_builtin_uint128
+        timeout: 150
     )
 
     test('cutil',
@@ -219,8 +218,7 @@ if impl == 'cuda'
             cuda_args: '-DBICOS_CUDA',
             cpp_args: '-DBICOS_CPU',
             override_options: override_options
-        ),
-        should_fail: not has_builtin_uint128
+        )
     )
 
     if impl == 'cuda' and cxxopts.found()

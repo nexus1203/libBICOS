@@ -31,6 +31,8 @@ using namespace BICOS;
 using namespace test;
 using namespace impl;
 
+#ifdef BICOS_CUDA_HAS_UINT128
+
 int main(int argc, char const* const* argv) {
     std::vector<SequenceEntry> lseq, rseq;
     std::vector<cv::Mat> lhost, rhost;
@@ -120,3 +122,9 @@ int main(int argc, char const* const* argv) {
 
     return 0;
 }
+
+#else
+
+int main(int argc, char const* const* argv) { return EXIT_TEST_SKIP; }
+
+#endif

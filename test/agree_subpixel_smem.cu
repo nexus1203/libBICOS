@@ -85,7 +85,7 @@ int main(void) {
     );
 
     if (!smem_fits)
-        return 77; // skip, see https://mesonbuild.com/Unit-tests.html#skipped-tests-and-hard-errors
+        return EXIT_TEST_SKIP;
 
     block = cuda::max_blocksize(kernel);
     grid = create_grid(block, randsize);

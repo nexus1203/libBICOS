@@ -26,6 +26,8 @@
 
 #include "stepbuf.hpp"
 
+#define EXIT_TEST_SKIP 77 // https://mesonbuild.com/Unit-tests.html#skipped-tests-and-hard-errors
+
 namespace BICOS::test {
 
 int randint(int from = INT_MIN, int to = INT_MAX) {

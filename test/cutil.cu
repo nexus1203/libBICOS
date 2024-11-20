@@ -23,6 +23,8 @@
 using namespace BICOS;
 using namespace impl;
 
+#ifdef BICOS_CUDA_HAS_UINT128
+
 #define UINT128_MAX (((__uint128_t)UINT64_MAX << 64) | UINT64_MAX)
 
 __global__ void load_128bit_kernel(const __uint128_t *src, __uint128_t *dst) {
@@ -54,3 +56,9 @@ int main(void) {
 
     return 0;
 }
+
+#else
+
+int main(void) { return EXIT_TEST_SKIP; }
+
+#endif
