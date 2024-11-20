@@ -44,7 +44,7 @@ After installing, you can include `/usr/local/include/BICOS/*` and link against 
 Alternatively, this project builds `bicos-cli`. To give you a feel for the parameters of BICOS, you can download an example dataset with [`data/prepare.sh`](/data/prepare.sh) that contains rectified imagery from a stereo camera, where images per side only differ in the projected light pattern.
 Calling:
 ```console
-$ bicos-cli data/{left,right} -q data/Q.yaml --threshold 0.96 --stacksize 33 --variance 2.0 --step 0.1 -o /tmp/result.png
+$ bicos-cli data/{left,right} -q data/Q.yaml --threshold 0.96 --stacksize 33 --limited --variance 2.0 --step 0.1 -o /tmp/result.png
 ```
 will get you:
 
