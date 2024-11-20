@@ -221,14 +221,17 @@ if impl == 'cuda'
                 override_options: override_options,
             )
         )
-    endif
 
-    if impl == 'cuda' and cxxopts.found() and has_builtin_uint128
-        test('regress_cuda',
-            find_program('test/regress.bash'),
-            depends: cli_tgt,
-            workdir: meson.current_source_dir()
-        )
+        if impl == 'cuda' and cxxopts.found()
+            test('regress_cuda',
+                find_program('test/regress.bash'),
+                depends: cli_tgt,
+                workdir: meson.current_source_dir(),
+                verbose: true
+            )
+        endif
+    else
+        message('No 128-bit: integration tests are disabled.')
     endif
 endif
 
