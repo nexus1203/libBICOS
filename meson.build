@@ -223,7 +223,7 @@ if impl == 'cuda'
         )
     endif
 
-    if impl == 'cuda' and cxxopts.found()
+    if impl == 'cuda' and cxxopts.found() and has_builtin_uint128
         test('regress_cuda',
             find_program('test/regress.bash'),
             depends: cli_tgt,
