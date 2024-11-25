@@ -85,6 +85,8 @@ else
     error('unsupported implementation')
 endif
 
+project_version = meson.project_version()
+
 libs = both_libraries(
     'BICOS',
     sources: srcs,
@@ -92,7 +94,16 @@ libs = both_libraries(
     dependencies: deps,
     install: true,
     override_options: override_options,
+    version: project_version.split('-')[0],
 )
+
+# enable static linkage as subproject
+libbicos_dep = declare_dependency(
+    include_directories: incls,
+    dependencies: deps,
+    objects: libs.get_static_lib().extract_all_objects(recursive: true)
+)
+meson.override_dependency('BICOS', libbicos_dep)
 
 cxxopts = dependency('cxxopts', required: false, not_found_message: 'library cxxopts not found, skipping CLI build.')
 if cxxopts.found()
@@ -264,8 +275,6 @@ if googlebench.found()
         )
     endif
 endif
-
-project_version = meson.project_version()
 
 configure_file(
     output: 'config.hpp',
