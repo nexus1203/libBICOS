@@ -21,6 +21,7 @@
 
 #include "cpu.hpp"
 
+#include "impl/common.hpp"
 #include "impl/cpu/agree.hpp"
 #include "impl/cpu/bicos.hpp"
 #include "impl/cpu/descriptor_transform.hpp"
@@ -36,24 +37,29 @@ static void match_impl(
     double thresh,
     std::optional<float> step,
     std::optional<double> min_var,
+    std::optional<int> lr_max_diff,
     TransformMode mode,
     cv::Size sz,
     size_t n,
     cv::Mat_<disparity_t>& out
 ) {
     cv::Mat1s raw_disp;
+    std::unique_ptr<StepBuf<TDescriptor>> desc0, desc1;
     switch (mode) {
         case TransformMode::FULL: {
-            auto desc0 = descriptor_transform<TInput, TDescriptor, transform_full>(stack0, sz, n),
-                 desc1 = descriptor_transform<TInput, TDescriptor, transform_full>(stack1, sz, n);
-            raw_disp = bicos(desc0, desc1, sz);
+            desc0 = descriptor_transform<TInput, TDescriptor, transform_full>(stack0, sz, n);
+            desc1 = descriptor_transform<TInput, TDescriptor, transform_full>(stack1, sz, n);
         } break;
         case TransformMode::LIMITED: {
-            auto desc0 = descriptor_transform<TInput, TDescriptor, transform_limited>(stack0, sz, n),
-                 desc1 = descriptor_transform<TInput, TDescriptor, transform_limited>(stack1, sz, n);
-            raw_disp = bicos(desc0, desc1, sz);
+            desc0 = descriptor_transform<TInput, TDescriptor, transform_limited>(stack0, sz, n),
+            desc1 = descriptor_transform<TInput, TDescriptor, transform_limited>(stack1, sz, n);
         } break;
     }
+
+    if (lr_max_diff.has_value())
+        raw_disp = bicos<TDescriptor, BICOSVariant::WITH_REVERSE>(desc0, desc1, lr_max_diff.value(), sz);
+    else
+        raw_disp = bicos<TDescriptor, BICOSVariant::DEFAULT>(desc0, desc1, -1, sz);
 
     if (step.has_value())
         agree_subpixel<TInput>(raw_disp, stack0, stack1, n, thresh, step.value(), min_var, out);
@@ -88,27 +94,30 @@ void match(
 
     const cv::Size size = _stack0.front().size();
     double min_var = n * cfg.min_variance.value_or(1.0);
+    std::optional<int> lr_max_diff = std::nullopt;
+    if (std::holds_alternative<Variant::WithReverse>(cfg.variant))
+        lr_max_diff = std::get<Variant::WithReverse>(cfg.variant).max_lr_diff;
 
     cv::Mat1s raw_disp;
 
     switch (required_bits) {
         case 0 ... 32:
             if (depth == CV_8U)
-                match_impl<uint8_t, uint32_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, cfg.mode, size, n, disparity);
+                match_impl<uint8_t, uint32_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, lr_max_diff, cfg.mode, size, n, disparity);
             else
-                match_impl<uint16_t, uint32_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, cfg.mode, size, n, disparity);
+                match_impl<uint16_t, uint32_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, lr_max_diff, cfg.mode, size, n, disparity);
             break;
         case 33 ... 64:
             if (depth == CV_8U)
-                match_impl<uint8_t, uint64_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, cfg.mode, size, n, disparity);
+                match_impl<uint8_t, uint64_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, lr_max_diff, cfg.mode, size, n, disparity);
             else
-                match_impl<uint16_t, uint64_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, cfg.mode, size, n, disparity);
+                match_impl<uint16_t, uint64_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, lr_max_diff, cfg.mode, size, n, disparity);
             break;
         case 65 ... 128:
             if (depth == CV_8U)
-                match_impl<uint8_t, uint128_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, cfg.mode, size, n, disparity);
+                match_impl<uint8_t, uint128_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, lr_max_diff, cfg.mode, size, n, disparity);
             else
-                match_impl<uint16_t, uint128_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, cfg.mode, size, n, disparity);
+                match_impl<uint16_t, uint128_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, lr_max_diff, cfg.mode, size, n, disparity);
             break;
         default:
             throw std::invalid_argument(BICOS::format("input stacks too large, would require {} bits", required_bits));

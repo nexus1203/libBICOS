@@ -91,13 +91,13 @@ int main(int argc, char const* const* argv) {
     cv::cuda::GpuMat raw_gpu(sz, cv::DataType<int16_t>::type);
     raw_gpu.setTo(INVALID_DISP_<int16_t>);
 
-    block = cuda::max_blocksize(cuda::bicos_kernel<uint128_t>);
+    block = cuda::max_blocksize(cuda::bicos_kernel<uint128_t, BICOSVariant::DEFAULT>);
     grid = create_grid(block, sz);
 
     // clang-format off
 
-    cuda::bicos_kernel<uint128_t>
-        <<<grid, block, 0, mainstream>>>(ldptr, rdptr, raw_gpu);
+    cuda::bicos_kernel<uint128_t, BICOSVariant::DEFAULT>
+        <<<grid, block, 0, mainstream>>>(ldptr, rdptr, -1, raw_gpu);
 
     assertCudaSuccess(cudaGetLastError());
 
@@ -111,7 +111,7 @@ int main(int argc, char const* const* argv) {
 
     // clang-format on
 
-    raw_host = cpu::bicos(ldhost, rdhost, sz);
+    raw_host = cpu::bicos<uint128_t, BICOSVariant::DEFAULT>(ldhost, rdhost, -1, sz);
 
     cudaStreamSynchronize(mainstream);
 

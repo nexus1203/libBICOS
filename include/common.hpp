@@ -25,6 +25,7 @@
 #include <limits>
 #include <opencv2/core.hpp>
 #include <optional>
+#include <variant>
 
 namespace BICOS {
 
@@ -51,6 +52,11 @@ enum class TransformMode { LIMITED, FULL };
 enum class Precision { SINGLE, DOUBLE };
 #endif
 
+namespace Variant {
+    struct Default {};
+    struct WithReverse { int max_lr_diff = 1; };
+} // namespace Variant
+
 struct Config {
     double nxcorr_thresh = 0.5;
     std::optional<float> subpixel_step = std::nullopt;
@@ -59,6 +65,7 @@ struct Config {
 #if defined(BICOS_CUDA)
     Precision precision = Precision::DOUBLE;
 #endif
+    std::variant<Variant::Default, Variant::WithReverse> variant = Variant::Default {};
 };
 
 class Exception: public std::exception {

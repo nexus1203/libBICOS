@@ -31,6 +31,10 @@ using namespace test;
 #define _STR(s) #s
 #define STR(s) _STR(s)
 
+#if !defined INPUT_TYPE || !defined DESCRIPTOR_TYPE || !defined TRANSFORM_LIMITED
+#   error "undefined compilation constants"
+#endif
+
 int main(void) {
     cv::Mat hoststack;
     std::vector<cv::Mat_<INPUT_TYPE>> rand_host;

@@ -23,6 +23,10 @@
 
 #include <opencv2/core/cuda.hpp>
 
+#if !defined DESCRIPTOR_TYPE || !defined BICOS_VARIANT
+#   error "undefined compilation constants"
+#endif
+
 using namespace BICOS;
 using namespace impl;
 using namespace test;
@@ -46,14 +50,14 @@ int main(void) {
 
     size_t smem_size = randsize.width * sizeof(DESCRIPTOR_TYPE);
 
-    dim3 block = cuda::max_blocksize(cuda::bicos_kernel<DESCRIPTOR_TYPE>, smem_size);
+    dim3 block = cuda::max_blocksize(cuda::bicos_kernel<DESCRIPTOR_TYPE, BICOS_VARIANT>, smem_size);
     dim3 grid = create_grid(block, randsize);
 
-    cuda::bicos_kernel<DESCRIPTOR_TYPE><<<grid, block, smem_size>>>(lptr, rptr, disp_dev);
+    cuda::bicos_kernel<DESCRIPTOR_TYPE, BICOS_VARIANT><<<grid, block, smem_size>>>(lptr, rptr, 3, disp_dev);
 
     assertCudaSuccess(cudaGetLastError());
 
-    cv::Mat1s disp = cpu::bicos(ld, rd, randsize);
+    cv::Mat1s disp = cpu::bicos<DESCRIPTOR_TYPE, BICOS_VARIANT>(ld, rd, 3, randsize);
 
     assertCudaSuccess(cudaDeviceSynchronize());
 

@@ -38,4 +38,6 @@ struct Wider<uint16_t> {
 template <typename T>
 using wider_t = typename Wider<T>::type;
 
+enum class BICOSVariant { DEFAULT, WITH_REVERSE };
+
 }

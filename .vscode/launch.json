@@ -8,7 +8,10 @@
             "name": "bicos-cli",
             "type": "cuda-gdb",
             "request": "launch",
-            "program": "${workspaceFolder}/builddir/bicos-cli"
+            "program": "${workspaceFolder}/builddir/bicos-cli",
+            "args": [
+                "${workspaceFolder}/data/left ${workspaceFolder}/data/right -n 33 --limited -t 0.95 -v 1.0 -s 0.1 --lr-maxdiff=3 -o /tmp/bicos-dbg"
+            ]
         },
         {
             "name": "descriptor_transform_8_32",

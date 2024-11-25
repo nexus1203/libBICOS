@@ -180,17 +180,19 @@ if impl == 'cuda'
     endforeach
 
     foreach descriptor_depth : depths
-        testname = f'bicos_@descriptor_depth@'
-        test(testname,
-            executable('test_' + testname,
-                sources: srcs + 'test/bicos.cu',
-                dependencies: deps,
-                include_directories: incls,
-                cuda_args: ['-DBICOS_CUDA', f'-DDESCRIPTOR_TYPE=uint@descriptor_depth@_t'],
-                cpp_args: '-DBICOS_CPU',
-                override_options: override_options,
+        foreach variant : ['DEFAULT', 'WITH_REVERSE']
+            testname = f'bicos_@descriptor_depth@_' + variant.to_lower()
+            test(testname,
+                executable('test_' + testname,
+                    sources: srcs + 'test/bicos.cu',
+                    dependencies: deps,
+                    include_directories: incls,
+                    cuda_args: ['-DBICOS_CUDA', f'-DDESCRIPTOR_TYPE=uint@descriptor_depth@_t', f'-DBICOS_VARIANT=BICOSVariant::@variant@'],
+                    cpp_args: '-DBICOS_CPU',
+                    override_options: override_options,
+                )
             )
-        )
+        endforeach
     endforeach
 
     if is_debug

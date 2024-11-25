@@ -24,25 +24,29 @@
 #include <iostream>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
-#include <opencv2/calib3d.hpp>
 #include <optional>
 
 #ifdef BICOS_CUDA
     #include <opencv2/core/cuda.hpp>
 #endif
 
+#include "compat.hpp"
 #include "fileutils.hpp"
 #include "match.hpp"
-#include "compat.hpp"
+
+// clang-format off
 
 #define DELTA_MS(name) double delta_##name = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - tick).count() / 1000.0
 
+// clang-format on
+
 using namespace BICOS;
 
-#define LICENSE_HEADER "libBICOS  Copyright (C) 2024  Robotics Group @ JMU\n"\
-                       "This program is free software, and you are welcome to redistribute\n"\
-                       "it under the conditions of the GNU LGPL-3.0-or-later license.\n"\
-                       "Refer to https://github.com/JMUWRobotics/libBICOS for details.\n"
+#define LICENSE_HEADER \
+    "libBICOS  Copyright (C) 2024  Robotics Group @ JMU\n" \
+    "This program is free software, and you are welcome to redistribute\n" \
+    "it under the conditions of the GNU LGPL-3.0-or-later license.\n" \
+    "Refer to https://github.com/JMUWRobotics/libBICOS for details.\n"
 
 int main(int argc, char const* const* argv) {
     cxxopts::Options opts(argv[0], "cli to process images with BICOS");
@@ -62,6 +66,7 @@ int main(int argc, char const* const* argv) {
 #ifdef BICOS_CUDA
         ("single", "Set single instead of double precision")
 #endif
+        ("lr-maxdiff", "Maximum disparity difference between left and right image. Not enabled by default. Needs to be set like `--lr-maxdiff=3`", cxxopts::value<uint>()->implicit_value("1"))
         ("h,help", "Display this message");
 
     opts.parse_positional({"folder0", "folder1"});
@@ -133,6 +138,8 @@ int main(int argc, char const* const* argv) {
     if (args.count("single"))
         c.precision = Precision::SINGLE;
 #endif
+    if (args.count("lr-maxdiff"))
+        c.variant = Variant::WithReverse { .max_lr_diff = (int)args["lr-maxdiff"].as<uint>() };
 
 #ifdef BICOS_CUDA
 

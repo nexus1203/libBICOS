@@ -17,9 +17,10 @@
  */
 
 #include "common.hpp"
-#include "cuda.hpp"
 #include "compat.hpp"
+#include "cuda.hpp"
 
+#include "impl/common.hpp"
 #include "impl/cuda/agree.cuh"
 #include "impl/cuda/bicos.cuh"
 #include "impl/cuda/cutil.cuh"
@@ -43,6 +44,7 @@ static void match_impl(
     TransformMode mode,
     std::optional<float> subpixel_step,
     std::optional<double> min_var,
+    std::optional<int> lr_max_diff,
     cv::cuda::GpuMat& out,
     cv::cuda::Stream& _stream
 ) {
@@ -107,26 +109,29 @@ static void match_impl(
     cv::cuda::GpuMat bicos_disp(sz, cv::DataType<int16_t>::type);
     bicos_disp.setTo(INVALID_DISP_<int16_t>, _stream);
 
+    auto kernel = lr_max_diff.has_value()
+        ? bicos_kernel_smem<TDescriptor, BICOSVariant::WITH_REVERSE>
+        : bicos_kernel_smem<TDescriptor, BICOSVariant::DEFAULT>;
+
     size_t smem_size = sz.width * sizeof(TDescriptor);
-    bool bicos_smem_fits = cudaSuccess == cudaFuncSetAttribute(
-        bicos_kernel_smem<TDescriptor>,
-        cudaFuncAttributeMaxDynamicSharedMemorySize,
-        smem_size
-    );
+    bool bicos_smem_fits = cudaSuccess
+        == cudaFuncSetAttribute(kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
     cudaGetLastError(); // clear potential error from previous call to cudaFuncSetAttribute
 
     if (bicos_smem_fits) {
-        block = max_blocksize(bicos_kernel_smem<TDescriptor>, smem_size);
-        grid  = create_grid(block, sz);
-
-        bicos_kernel_smem<TDescriptor>
-            <<<grid, block, smem_size, mainstream>>>(descr0_dev, descr1_dev, bicos_disp);
-    } else {
-        block = max_blocksize(bicos_kernel<TDescriptor>);
+        block = max_blocksize(kernel, smem_size);
         grid = create_grid(block, sz);
 
-        bicos_kernel<TDescriptor>
-            <<<grid, block, 0, mainstream>>>(descr0_dev, descr1_dev, bicos_disp);
+        kernel<<<grid, block, smem_size, mainstream>>>(descr0_dev, descr1_dev, lr_max_diff.value_or(-1), bicos_disp);
+    } else {
+        kernel = lr_max_diff.has_value()
+            ? bicos_kernel<TDescriptor, BICOSVariant::WITH_REVERSE>
+            : bicos_kernel<TDescriptor, BICOSVariant::DEFAULT>;
+
+        block = max_blocksize(kernel);
+        grid = create_grid(block, sz);
+
+        kernel<<<grid, block, 0, mainstream>>>(descr0_dev, descr1_dev, lr_max_diff.value_or(-1), bicos_disp);
     }
     assertCudaSuccess(cudaGetLastError());
 
@@ -194,25 +199,29 @@ void match(
         ? n * n - 2 * n + 3
         : 4 * n - 7;
 
+    std::optional<int> lr_max_diff = std::nullopt;
+    if (std::holds_alternative<Variant::WithReverse>(cfg.variant))
+        lr_max_diff = std::get<Variant::WithReverse>(cfg.variant).max_lr_diff;
+
     switch (required_bits) {
         case 0 ... 32:
             if (depth == CV_8U)
-                match_impl<uint8_t, uint32_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, disparity, stream);
+                match_impl<uint8_t, uint32_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, lr_max_diff, disparity, stream);
             else
-                match_impl<uint16_t, uint32_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, disparity, stream);
+                match_impl<uint16_t, uint32_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, lr_max_diff, disparity, stream);
             break;
         case 33 ... 64:
             if (depth == CV_8U)
-                match_impl<uint8_t, uint64_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, disparity, stream);
+                match_impl<uint8_t, uint64_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, lr_max_diff, disparity, stream);
             else
-                match_impl<uint16_t, uint64_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, disparity, stream);
+                match_impl<uint16_t, uint64_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, lr_max_diff, disparity, stream);
             break;
 #ifdef BICOS_CUDA_HAS_UINT128
         case 65 ... 128:
             if (depth == CV_8U)
-                match_impl<uint8_t, uint128_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, disparity, stream);
+                match_impl<uint8_t, uint128_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, lr_max_diff, disparity, stream);
             else
-                match_impl<uint16_t, uint128_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, disparity, stream);
+                match_impl<uint16_t, uint128_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, lr_max_diff, disparity, stream);
             break;
 #endif
         default:

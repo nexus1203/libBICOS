@@ -19,6 +19,7 @@
 #pragma once
 
 #include "common.hpp"
+#include "impl/common.hpp"
 #include "stepbuf.hpp"
 
 namespace BICOS::impl::cuda {
@@ -65,10 +66,11 @@ bicos_search(TDescriptor d0, const TDescriptor* row1, size_t cols) {
     return best_col1;
 }
 
-template<typename TDescriptor>
+template<typename TDescriptor, BICOSVariant VARIANT>
 __global__ void bicos_kernel_smem(
     const StepBuf<TDescriptor>* descr0,
     const StepBuf<TDescriptor>* descr1,
+    int max_lr_diff,
     cv::cuda::PtrStepSz<int16_t> out
 ) {
     const int col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -77,31 +79,59 @@ __global__ void bicos_kernel_smem(
     if (out.rows <= row)
         return;
 
-    extern __shared__ char _row1[];
-    TDescriptor* row1 = (TDescriptor*)_row1;
+    extern __shared__ char _row[];
+    TDescriptor* row1 = (TDescriptor*)_row;
 
     for (size_t c = threadIdx.x; c < out.cols; c += blockDim.x)
         row1[c] = descr1->row(row)[c];
 
-    if (out.cols <= col)
-        return;
+    // no early return here on cols >= out.cols,
+    // we need every thread again to load row0 into smem
 
     __syncthreads();
 
-    int best_col1 = bicos_search<TDescriptor, load_deref>(
-        load_datacache(descr0->row(row) + col),
-        row1,
-        out.cols
-    );
+    int best_col1 = -1;
+    if (col < out.cols) {
+        best_col1 = bicos_search<TDescriptor, load_deref>(
+            load_datacache(descr0->row(row) + col),
+            row1,
+            out.cols
+        );
+    }
 
-    if (best_col1 != -1)
-        out(row, col) = abs(col - best_col1);
+    if constexpr (VARIANT == BICOSVariant::WITH_REVERSE) {
+        __syncthreads();
+
+        TDescriptor d1;
+        if (best_col1 != -1)
+            d1 = row1[best_col1];
+        
+        TDescriptor* row0 = (TDescriptor*)_row;
+
+        for (size_t c = threadIdx.x; c < out.cols; c += blockDim.x)
+            row0[c] = descr0->row(row)[c];
+
+        __syncthreads();
+
+        if (col >= out.cols || best_col1 == -1)
+            return;
+
+        int reverse_col0 = bicos_search<TDescriptor, load_deref>(d1, row0, out.cols);
+
+        if (reverse_col0 != -1 && abs(col - reverse_col0) <= max_lr_diff)
+            out(row, col) = abs((col + reverse_col0) / 2 - best_col1);
+
+    } else {
+        if (best_col1 != -1)
+            out(row, col) = abs(col - best_col1);
+    }
 }
 
-template<typename TDescriptor>
+template<typename TDescriptor, BICOSVariant VARIANT>
 __global__ void bicos_kernel(
     const StepBuf<TDescriptor>* descr0,
     const StepBuf<TDescriptor>* descr1,
+    int max_lr_diff,
     cv::cuda::PtrStepSz<int16_t> out
 ) {
     const int col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -116,7 +146,19 @@ __global__ void bicos_kernel(
         out.cols
     );
 
-    if (best_col1 != -1)
+    if (best_col1 == -1)
+        return;
+
+    if constexpr (VARIANT == BICOSVariant::WITH_REVERSE) {
+        int reverse_col0 = bicos_search<TDescriptor, load_datacache>(
+            load_datacache(descr1->row(row) + best_col1),
+            descr0->row(row),
+            out.cols
+        );
+
+        if (reverse_col0 != -1 && abs(col - reverse_col0) <= max_lr_diff)
+            out(row, col) = abs((col + reverse_col0) / 2 - best_col1);
+    } else
         out(row, col) = abs(col - best_col1);
 }
 
