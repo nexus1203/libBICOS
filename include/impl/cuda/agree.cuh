@@ -116,7 +116,7 @@ __global__ void agree_kernel(
 
     const int16_t d = __ldg(raw_disp.ptr(row) + col);
 
-    if (d == INVALID_DISP_<int16_t>)
+    if (d == INVALID_DISP<int16_t>)
         return;
 
     int col1 = col - d;
@@ -169,7 +169,7 @@ __global__ void agree_subpixel_kernel(
 
     const int16_t d = __ldg(raw_disp.ptr(row) + col);
 
-    if (d == INVALID_DISP_<int16_t>)
+    if (d == INVALID_DISP<int16_t>)
         return;
 
     const int col1 = col - d;
@@ -280,7 +280,7 @@ __global__ void agree_subpixel_kernel_smem(
 
     const int16_t d = raw_disp(row, col);
 
-    if (d == INVALID_DISP_<int16_t>)
+    if (d == INVALID_DISP<int16_t>)
         return;
 
     const int col1 = col - d;

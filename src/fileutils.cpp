@@ -19,73 +19,36 @@
 #include "fileutils.hpp"
 #include "common.hpp"
 #include "compat.hpp"
+#include "opencv2/core.hpp"
 
 #include <filesystem>
-#include <fstream>
-#include <iostream>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
-#include <ostream>
 #include <stdexcept>
 
 namespace BICOS {
 
-void save_pointcloud(
-    const cv::Mat3f points,
-    const cv::Mat_<BICOS::disparity_t>& disparity,
-    std::filesystem::path outfile
-) {
-    if (points.size() != disparity.size())
-        throw std::invalid_argument("save_pointcloud: invalid sizes");
+void save_image(const cv::Mat& image, std::filesystem::path outfile, cv::ColormapTypes cmap) {
+    cv::Mat normalized, colorized, mask;
 
-    std::ofstream xyz(outfile.replace_extension("xyz"));
+    image.copyTo(mask);
+    if (mask.type() == CV_32FC1)
+        cv::patchNaNs(mask, -1.0);
 
-    size_t n_nonfinite = 0;
-
-    for (int row = 0; row < points.rows; ++row) {
-        for (int col = 0; col < points.cols; ++col) {
-            if (std::isnan(disparity(row, col)) || disparity(row, col) == BICOS::INVALID_DISP)
-                continue;
-
-            cv::Vec3f point = points(row, col);
-
-            float x = point[0], y = point[1], z = point[2];
-
-            if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z)) {
-                n_nonfinite++;
-                continue;
-            }
-
-            xyz << x << ' ' << y << ' ' << z << '\n';
-        }
-    }
-
-    xyz.flush();
-    xyz.close();
-
-    std::cout << "Saved pointcloud in ascii-format to\t" << outfile << '\n';
-    if (n_nonfinite > 0)
-        std::cout << "Skipped " << n_nonfinite << " points with non-finite fp values\n";
-
-    std::cout.flush();
-}
-
-void save_disparity(const cv::Mat_<BICOS::disparity_t>& disparity, std::filesystem::path outfile) {
-    cv::Mat normalized, colorized;
-
-    cv::normalize(disparity, normalized, 0, 255, cv::NORM_MINMAX, CV_8UC1);
-    normalized.setTo(0, disparity == -1);
-    cv::applyColorMap(normalized, colorized, cv::COLORMAP_TURBO);
+    cv::normalize(image, normalized, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+    normalized.setTo(0, mask == -1);
+    cv::applyColorMap(normalized, colorized, cmap);
+    colorized.setTo(0, mask == -1);
 
     if (!cv::imwrite(outfile.replace_extension("png"), colorized))
         std::cerr << "Could not save to\t" << outfile << std::endl;
     else
-        std::cout << "Saved colorized disparity to\t\t" << outfile << std::endl;
+        std::cout << "Saved normalized & colorized to\t\t" << outfile << std::endl;
 
-    if (!cv::imwrite(outfile.replace_extension("tiff"), disparity))
+    if (!cv::imwrite(outfile.replace_extension("tiff"), image))
         std::cerr << "Could not save to\t" << outfile << std::endl;
     else
-        std::cout << "Saved floating-point disparity to\t" << outfile << std::endl;
+        std::cout << "Saved floating-point to\t\t\t" << outfile << std::endl;
 }
 
 static void

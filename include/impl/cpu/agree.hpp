@@ -23,8 +23,8 @@
 namespace BICOS::impl::cpu {
 
 template<typename T>
-static double nxcorr(const T* pix0, const T* pix1, size_t n, std::optional<double> minvar) {
-    double mean0 = 0.0, mean1 = 0.0;
+static float nxcorr(const T* pix0, const T* pix1, size_t n, std::optional<float> minvar) {
+    float mean0 = 0.f, mean1 = 0.f;
     for (size_t i = 0; i < n; ++i) {
         mean0 += pix0[i];
         mean1 += pix1[i];
@@ -32,59 +32,58 @@ static double nxcorr(const T* pix0, const T* pix1, size_t n, std::optional<doubl
     mean0 /= n;
     mean1 /= n;
 
-    double covar = 0.0, var0 = 0.0, var1 = 0.0;
+    float covar = 0.f, var0 = 0.f, var1 = 0.f;
     for (size_t i = 0; i < n; ++i) {
-        double diff0 = pix0[i] - mean0, diff1 = pix1[i] - mean1;
+        float diff0 = pix0[i] - mean0, diff1 = pix1[i] - mean1;
 
-        covar = std::fma(diff0, diff1, covar);
-        var0 = std::fma(diff0, diff0, var0);
-        var1 = std::fma(diff1, diff1, var1);
+        covar = std::fmaf(diff0, diff1, covar);
+        var0 = std::fmaf(diff0, diff0, var0);
+        var1 = std::fmaf(diff1, diff1, var1);
     }
 
     if (minvar.has_value() && (var0 < *minvar || var1 < *minvar))
-        return -1.0;
+        return -1.f;
 
-    return covar / std::sqrt(var0 * var1);
+    return covar / std::sqrtf(var0 * var1);
 }
 
 template<typename TInput>
 static void agree(
-    const cv::Mat1s& raw_disp,
+    cv::Mat& raw_disp, // int16_t
     const cv::Mat& stack0,
     const cv::Mat& stack1,
     size_t n_images,
-    double nxcorr_threshold,
-    std::optional<double> min_var,
-    cv::Mat_<disparity_t>& ret
+    float nxcorr_threshold,
+    std::optional<float> min_var,
+    cv::Mat *corrmap
 ) {
     auto sz = raw_disp.size();
 
-    ret.create(sz);
-    ret.setTo(INVALID_DISP);
-
     cv::parallel_for_(cv::Range(0, sz.height), [&](const cv::Range& r) {
         for (int row = r.start; row < r.end; ++row) {
-            const cv::Mat1s raw_row = raw_disp.row(row);
-            cv::Mat_<disparity_t> ret_row = ret.row(row);
+            cv::Mat raw_row = raw_disp.row(row);
 
             for (int col = 0; col < sz.width; ++col) {
-                const int16_t d = raw_row.at<int16_t>(col);
+                int16_t& d = raw_row.at<int16_t>(col);
 
-                if (d == INVALID_DISP_<int16_t>)
+                if (d == INVALID_DISP<int16_t>)
                     continue;
 
                 const int idx1 = col - d;
 
-                if (idx1 < 0 || sz.width <= idx1)
+                if (idx1 < 0 || sz.width <= idx1) {
+                    d = INVALID_DISP<int16_t>;
                     continue;
+                }
 
-                double nxc =
+                float nxc =
                     nxcorr(stack0.ptr<TInput>(row, col), stack1.ptr<TInput>(row, idx1), n_images, min_var);
 
-                if (nxc < nxcorr_threshold)
-                    continue;
+                if (corrmap)
+                    corrmap->at<float>(row, col) = nxc;
 
-                ret_row.at<disparity_t>(col) = d;
+                if (nxc < nxcorr_threshold)
+                    d = INVALID_DISP<int16_t>;
             }
         }
     });
@@ -96,25 +95,26 @@ static void agree_subpixel(
     const cv::Mat& stack0,
     const cv::Mat& stack1,
     size_t n,
-    double nxcorr_threshold,
+    float min_nxc,
     float subpixel_step,
-    std::optional<double> min_var,
-    cv::Mat_<disparity_t>& ret
+    std::optional<float> min_var,
+    cv::Mat& ret,
+    cv::Mat *corrmap
 ) {
     auto sz = raw_disp.size();
 
-    ret.create(sz);
-    ret.setTo(INVALID_DISP);
+    ret.create(sz, cv::DataType<float>::type);
+    ret.setTo(INVALID_DISP<float>);
 
     cv::parallel_for_(cv::Range(0, sz.height), [&](const cv::Range& r) {
         for (int row = r.start; row < r.end; ++row) {
             const cv::Mat1s raw_row = raw_disp.row(row);
-            cv::Mat_<disparity_t> ret_row = ret.row(row);
+            cv::Mat ret_row = ret.row(row);
 
             for (int col = 0; col < sz.width; ++col) {
                 const int16_t d = raw_row.at<int16_t>(col);
 
-                if (d == INVALID_DISP_<int16_t>)
+                if (d == INVALID_DISP<int16_t>)
                     continue;
 
                 const int col1 = col - d;
@@ -123,17 +123,20 @@ static void agree_subpixel(
                     continue;
 
                 if (col1 == 0 || col1 == sz.width - 1) {
-                    double nxc = nxcorr(
+                    float nxc = nxcorr(
                         stack0.ptr<TInput>(row, col),
                         stack1.ptr<TInput>(row, col1),
                         n,
                         min_var
                     );
 
-                    if (nxc < nxcorr_threshold)
+                    if (corrmap)
+                        corrmap->at<float>(row, col) = nxc;
+
+                    if (nxc < min_nxc)
                         continue;
 
-                    ret_row.at<disparity_t>(col) = d;
+                    ret_row.at<float>(col) = d;
                 } else {
                     // clang-format off
 
@@ -155,25 +158,27 @@ static void agree_subpixel(
 
                     // clang-format on
 
-                    float best_x = 0.0f;
-                    double best_nxcorr = -1.0;
+                    float best_x = 0.f, best_nxc = -1.f;
 
-                    for (float x = -1.0f; x <= 1.0f; x += subpixel_step) {
+                    for (float x = -1.f; x <= 1.f; x += subpixel_step) {
                         for (size_t t = 0; t < n; ++t)
                             interp[t] = (TInput)roundevenf(a[t] * x * x + b[t] * x + c[t]);
 
-                        double nxc = nxcorr(stack0.ptr<TInput>(row, col), interp, n, min_var);
+                        float nxc = nxcorr(stack0.ptr<TInput>(row, col), interp, n, min_var);
 
-                        if (best_nxcorr < nxc) {
+                        if (best_nxc < nxc) {
                             best_x = x;
-                            best_nxcorr = nxc;
+                            best_nxc = nxc;
                         }
                     }
 
-                    if (best_nxcorr < nxcorr_threshold)
+                    if (corrmap)
+                        corrmap->at<float>(row, col) = best_nxc;
+
+                    if (best_nxc < min_nxc)
                         continue;
 
-                    ret_row.at<disparity_t>(col) = d + best_x;
+                    ret_row.at<float>(col) = d + best_x;
                 }
             }
         }

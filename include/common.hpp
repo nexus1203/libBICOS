@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include "opencv2/core/mat.hpp"
+#include <type_traits>
 #if !defined(BICOS_CUDA) && !defined(BICOS_CPU)
     #include "config.hpp"
 #endif
@@ -29,20 +31,16 @@
 
 namespace BICOS {
 
-using disparity_t = float;
 using uint128_t = __uint128_t;
 
 template<typename T>
-constexpr T INVALID_DISP_ =
+constexpr T INVALID_DISP =
     std::numeric_limits<T>::has_quiet_NaN ? std::numeric_limits<T>::quiet_NaN() : (T)-1;
-constexpr disparity_t INVALID_DISP = INVALID_DISP_<disparity_t>;
 
 #if defined(BICOS_CPU)
-using InputImage = cv::Mat;
-using OutputImage = cv::Mat_<disparity_t>;
+using Image = cv::Mat;
 #elif defined(BICOS_CUDA)
-using InputImage = cv::cuda::GpuMat;
-using OutputImage = cv::cuda::GpuMat;
+using Image = cv::cuda::GpuMat;
 #else
     #error "unimplemented"
 #endif
@@ -53,19 +51,24 @@ enum class Precision { SINGLE, DOUBLE };
 #endif
 
 namespace Variant {
-    struct Default {};
-    struct WithReverse { int max_lr_diff = 1; };
+    struct NoDuplicates {};
+    struct Consistency {
+        int max_lr_diff = 1;
+        bool no_dupes = false;
+    };
 } // namespace Variant
 
+using SearchVariant = std::variant<Variant::NoDuplicates, Variant::Consistency>;
+
 struct Config {
-    double nxcorr_thresh = 0.5;
+    std::optional<float> nxcorr_threshold = 0.5f;
     std::optional<float> subpixel_step = std::nullopt;
-    std::optional<double> min_variance = std::nullopt;
+    std::optional<float> min_variance  = std::nullopt;
     TransformMode mode = TransformMode::LIMITED;
 #if defined(BICOS_CUDA)
-    Precision precision = Precision::DOUBLE;
+    Precision precision = Precision::SINGLE;
 #endif
-    std::variant<Variant::Default, Variant::WithReverse> variant = Variant::Default {};
+    SearchVariant variant = Variant::NoDuplicates {};
 };
 
 class Exception: public std::exception {

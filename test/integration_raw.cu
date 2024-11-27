@@ -89,7 +89,7 @@ int main(int argc, char const* const* argv) {
     cudaStreamWaitEvent(mainstream, rdescev);
 
     cv::cuda::GpuMat raw_gpu(sz, cv::DataType<int16_t>::type);
-    raw_gpu.setTo(INVALID_DISP_<int16_t>);
+    raw_gpu.setTo(INVALID_DISP<int16_t>);
 
     block = cuda::max_blocksize(cuda::bicos_kernel<uint128_t, BICOSVariant::DEFAULT>);
     grid = create_grid(block, sz);

@@ -29,19 +29,20 @@ namespace BICOS {
 using namespace impl;
 
 void match(
-    const std::vector<InputImage>& stack0,
-    const std::vector<InputImage>& stack1,
-    OutputImage& disparity,
-    Config cfg
+    const std::vector<Image>& stack0,
+    const std::vector<Image>& stack1,
+    Image& disparity,
+    Config cfg,
+    Image *corrmap = nullptr
 #if defined(BICOS_CUDA)
     ,
     cv::cuda::Stream& stream = cv::cuda::Stream::Null()
 #endif
 ) {
 #if defined(BICOS_CPU)
-    cpu::match(stack0, stack1, disparity, cfg);
+    cpu::match(stack0, stack1, disparity, cfg, corrmap);
 #elif defined(BICOS_CUDA)
-    cuda::match(stack0, stack1, disparity, cfg, stream);
+    cuda::match(stack0, stack1, disparity, cfg, corrmap, stream);
 #else
     #error "undefined implementation"
 #endif

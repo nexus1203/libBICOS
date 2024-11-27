@@ -107,7 +107,7 @@ static void match_impl(
     /* bicos disparity */
 
     cv::cuda::GpuMat bicos_disp(sz, cv::DataType<int16_t>::type);
-    bicos_disp.setTo(INVALID_DISP_<int16_t>, _stream);
+    bicos_disp.setTo(INVALID_DISP<int16_t>, _stream);
 
     auto kernel = lr_max_diff.has_value()
         ? bicos_kernel_smem<TDescriptor, BICOSVariant::WITH_REVERSE>
@@ -137,8 +137,8 @@ static void match_impl(
 
     /* nxcorr */
 
-    out.create(sz, cv::DataType<disparity_t>::type);
-    out.setTo(INVALID_DISP, _stream);
+    out.create(sz, cv::DataType<float>::type);
+    out.setTo(INVALID_DISP<float>, _stream);
 
     // clang-format off
 

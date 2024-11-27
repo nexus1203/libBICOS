@@ -21,8 +21,13 @@
 #include "common.hpp"
 
 #include <filesystem>
+#include <iostream>
+#include <fstream>
+
 #include <opencv2/core.hpp>
 #include <opencv2/core/cuda.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 namespace BICOS {
 
@@ -35,9 +40,48 @@ struct SequenceEntry {
     }
 };
 
-void save_pointcloud(const cv::Mat3f points, const cv::Mat_<BICOS::disparity_t>& disparity, std::filesystem::path outfile);
+template <typename TDisparity>
+void save_pointcloud(
+    const cv::Mat3f points,
+    const cv::Mat_<TDisparity>& disparity,
+    std::filesystem::path outfile
+) {
+    if (points.size() != disparity.size())
+        throw std::invalid_argument("save_pointcloud: invalid sizes");
 
-void save_disparity(const cv::Mat_<BICOS::disparity_t>& disparity, std::filesystem::path outfile);
+    std::ofstream xyz(outfile.replace_extension("xyz"));
+
+    size_t n_nonfinite = 0;
+
+    for (int row = 0; row < points.rows; ++row) {
+        for (int col = 0; col < points.cols; ++col) {
+            if (std::isnan(disparity(row, col)) || disparity(row, col) == BICOS::INVALID_DISP<TDisparity>)
+                continue;
+
+            cv::Vec3f point = points(row, col);
+
+            float x = point[0], y = point[1], z = point[2];
+
+            if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z)) {
+                n_nonfinite++;
+                continue;
+            }
+
+            xyz << x << ' ' << y << ' ' << z << '\n';
+        }
+    }
+
+    xyz.flush();
+    xyz.close();
+
+    std::cout << "Saved pointcloud in ascii-format to\t" << outfile << '\n';
+    if (n_nonfinite > 0)
+        std::cout << "Skipped " << n_nonfinite << " points with non-finite fp values\n";
+
+    std::cout.flush();
+}
+
+void save_image(const cv::Mat& image, std::filesystem::path outfile, cv::ColormapTypes cmap = cv::COLORMAP_TURBO);
 
 void read_sequence(
     std::filesystem::path image_dir0,

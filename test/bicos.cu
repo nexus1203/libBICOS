@@ -46,7 +46,7 @@ int main(void) {
     const cuda::RegisteredPtr lptr(ld_dev.get(), 1, true), rptr(rd_dev.get(), 1, true);
 
     cv::cuda::GpuMat disp_dev(randsize, cv::DataType<int16_t>::type);
-    disp_dev.setTo(INVALID_DISP_<int16_t>);
+    disp_dev.setTo(INVALID_DISP<int16_t>);
 
     size_t smem_size = randsize.width * sizeof(DESCRIPTOR_TYPE);
 

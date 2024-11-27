@@ -54,7 +54,7 @@ namespace BICOS::impl::cpu {
     // clang-format on
 }
 
-template<typename TDescriptor, BICOSVariant VARIANT>
+template<typename TDescriptor, bool NODUPES>
 int bicos_search(TDescriptor d0, const TDescriptor* row1, size_t cols) {
     int best_col1 = -1, min_cost = INT_MAX, num_duplicate_minima = 0;
 
@@ -66,53 +66,57 @@ int bicos_search(TDescriptor d0, const TDescriptor* row1, size_t cols) {
         if (cost < min_cost) {
             min_cost = cost;
             best_col1 = col1;
-            num_duplicate_minima = 0;
-        } else if (cost == min_cost) {
-            num_duplicate_minima++;
-        }
+
+            if constexpr (NODUPES)
+                num_duplicate_minima = 0;
+
+        } else if constexpr (NODUPES)
+            if (cost == min_cost)
+                num_duplicate_minima++;
     }
 
-    if (0 < num_duplicate_minima)
-        return -1;
+    if constexpr (NODUPES)
+        if (0 < num_duplicate_minima)
+            return -1;
 
     return best_col1;
 }
 
 template<typename TDescriptor, BICOSVariant VARIANT>
-cv::Mat1s bicos(
+void bicos(
     const std::unique_ptr<StepBuf<TDescriptor>>& desc0,
     const std::unique_ptr<StepBuf<TDescriptor>>& desc1,
     int max_lr_diff,
-    cv::Size sz
+    cv::Size sz,
+    cv::Mat &out
 ) {
-    cv::Mat1s ret(sz);
-    ret.setTo(INVALID_DISP_<int16_t>);
+    out.create(sz, cv::DataType<int16_t>::type);
+    out.setTo(INVALID_DISP<int16_t>);
 
-    cv::parallel_for_(cv::Range(0, ret.rows), [&](const cv::Range& r) {
+    cv::parallel_for_(cv::Range(0, out.rows), [&](const cv::Range& r) {
         for (int row = r.start; row < r.end; ++row) {
             const TDescriptor *drow0 = desc0->row(row), *drow1 = desc1->row(row);
 
-            for (int col0 = 0; col0 < ret.cols; ++col0) {
-                int best_col1 = bicos_search<TDescriptor, VARIANT>(drow0[col0], drow1, ret.cols);
+            for (int col0 = 0; col0 < out.cols; ++col0) {
+                int best_col1 = bicos_search<TDescriptor, VARIANT & BICOSVariant::NO_DUPES>(drow0[col0], drow1, out.cols);
 
                 if (best_col1 == -1)
                     continue;
 
-                if constexpr (VARIANT == BICOSVariant::WITH_REVERSE) {
-                    int reverse_col0 = bicos_search<TDescriptor, VARIANT>(drow1[best_col1], drow0, ret.cols);
+                if constexpr (VARIANT & BICOSVariant::CONSISTENCY) {
+                    int reverse_col0 =
+                        bicos_search<TDescriptor, VARIANT & BICOSVariant::NO_DUPES>(drow1[best_col1], drow0, out.cols);
 
                     if (reverse_col0 == -1 || abs(col0 - reverse_col0) > max_lr_diff)
                         continue;
 
-                    ret(row, col0) = abs((col0 + reverse_col0) / 2 - best_col1);
+                    out.at<int16_t>(row, col0) = std::abs((col0 + reverse_col0) / 2 - best_col1);
 
                 } else
-                    ret(row, col0) = std::abs(col0 - best_col1);
+                    out.at<int16_t>(row, col0) = std::abs(col0 - best_col1);
             }
         }
     });
-
-    return ret;
 }
 
 } // namespace BICOS::impl::cpu

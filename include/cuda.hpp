@@ -29,6 +29,7 @@ void match(
     const std::vector<cv::cuda::GpuMat>& _stack1,
     cv::cuda::GpuMat& disparity,
     Config cfg,
+    cv::cuda::GpuMat *corrmap,
     cv::cuda::Stream &stream
 );
 

@@ -22,22 +22,34 @@
 
 namespace BICOS::impl {
 
-template <typename T>
+template<typename T>
 struct Wider;
 
-template <>
+template<>
 struct Wider<uint8_t> {
     using type = uint16_t;
 };
 
-template <>
+template<>
 struct Wider<uint16_t> {
     using type = uint32_t;
 };
 
-template <typename T>
+template<typename T>
 using wider_t = typename Wider<T>::type;
 
-enum class BICOSVariant { DEFAULT, WITH_REVERSE };
+enum class BICOSVariant { 
+    NO_DUPES =    0b01,
+    CONSISTENCY = 0b10
+};
 
+inline constexpr BICOSVariant operator|(BICOSVariant a, BICOSVariant b) {
+    return static_cast<BICOSVariant>(static_cast<int>(a) | static_cast<int>(b));
 }
+
+inline constexpr int operator&(BICOSVariant a, BICOSVariant b) {
+    return static_cast<int>(a) & static_cast<int>(b);
+}
+
+
+} // namespace BICOS::impl

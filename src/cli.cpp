@@ -18,14 +18,21 @@
 
 #include "common.hpp"
 
+#ifdef __GNUG__
+#include <csignal>
+#include <execinfo.h>
+#include <cxxabi.h>
+#endif
+
 #include <chrono>
-#include <cxxopts.hpp>
 #include <filesystem>
 #include <iostream>
+#include <optional>
+
+#include <cxxopts.hpp>
+#include <opencv2/calib3d.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
-#include <opencv2/calib3d.hpp>
-#include <optional>
 
 #ifdef BICOS_CUDA
     #include <opencv2/core/cuda.hpp>
@@ -49,26 +56,55 @@ using namespace BICOS;
     "it under the conditions of the GNU LGPL-3.0-or-later license.\n" \
     "Refer to https://github.com/JMUWRobotics/libBICOS for details.\n"
 
+#ifdef __GNUG__
+void backtracer(int sig) {
+    void *addresses[10];
+    char **symbols;
+    size_t n;
+
+    // this leaks memory but at this point it does not matter
+
+    n = backtrace(addresses, 10);
+
+    std::cerr << BICOS::format("Caught signal {} ({})", sig, strsignal(sig)) << std::endl;
+    symbols = backtrace_symbols(addresses, n);
+    
+    for (size_t i = 0; i < n; ++i)
+        std::cerr << abi::__cxa_demangle(symbols[i], NULL, NULL, NULL) << std::endl;
+
+    exit(sig);
+}
+#endif
+
 int main(int argc, char const* const* argv) {
+
+#ifdef __GNUG__
+    signal(SIGSEGV, backtracer);
+    signal(SIGTERM, backtracer);
+    signal(SIGABRT, backtracer);
+#endif
+
     cxxopts::Options opts(argv[0], "cli to process images with BICOS");
 
     // clang-format off
 
     opts.add_options()
-        ("folder0", "First folder containing input images with numbered names", cxxopts::value<std::string>())
+        ("folder0", "First folder containing input images with numbered names.", cxxopts::value<std::string>())
         ("folder1", "Optional second folder with input images. If specified, file names need to be 0.png, 1.png... Else, folder0 needs to contain 0_left.png, 0_right.png, 1_left.png...", cxxopts::value<std::string>())
-        ("t,threshold", "Normalized cross corellation threshold", cxxopts::value<double>()->default_value("0.75"))
-        ("v,variance", "Minimum intensity variance", cxxopts::value<double>()->implicit_value("1.0"))
-        ("s,step", "Subpixel step (optional)", cxxopts::value<float>())
-        ("limited", "Limit transformation mode. Allows for more images to be used.")
-        ("o,outfile", "Output file for disparity image", cxxopts::value<std::string>()->default_value("bicosdisp.png"))
-        ("n,stacksize", "Number of images to process. Defaults to all.", cxxopts::value<uint>())
-        ("q,qmatrix", "Path to cv::FileStorage with single matrix \"Q\" for computing pointcloud", cxxopts::value<std::string>())
+        ("t,threshold", "Minimum normalized cross corellation for a match to be accepted. Set to 0.0 to disable.", cxxopts::value<float>()->default_value("0.75"))
+        ("v,variance", "Minimum intensity variance. Only active with --threshold.", cxxopts::value<float>()->default_value("1.0"))
+        ("s,step", "Stepsize for subpixel interpolation. Only effective when threshold is set.", cxxopts::value<float>())
+        ("o,out", "Output file for disparity image.", cxxopts::value<std::string>()->default_value("bicosdisp.png"))
+        ("n,stacksize", "Number of images to process. Defaults to all found in the input folders.", cxxopts::value<uint>())
+        ("q,qmatrix", "Path to cv::FileStorage with single matrix \"Q\" for reconstructing a pointcloud.", cxxopts::value<std::string>())
+        ("m,lr-maxdiff", "Maximum disparity difference between left and right image. Enabling this disables duplicate filtering.", cxxopts::value<uint>())
 #ifdef BICOS_CUDA
-        ("single", "Set single instead of double precision")
+        ("double", "Set double instead of single precision")
 #endif
-        ("m,lr-maxdiff", "Maximum disparity difference between left and right image. Not enabled by default. Needs to be set like `--lr-maxdiff=3`", cxxopts::value<uint>()->implicit_value("1"))
-        ("h,help", "Display this message");
+        ("limited", "Limit transformation mode. Allows for more images to be used.")
+        ("corrmap", "Output map of normalized cross correlation values.")
+        ("no-dupes", "Default BICOS variant when --lr-maxdiff is not specified. Can be set together with --lr-maxdiff to activate both.")
+        ("h,help", "Display this message.");
 
     opts.parse_positional({"folder0", "folder1"});
     opts.positional_help("folder0 [folder1]");
@@ -84,8 +120,13 @@ int main(int argc, char const* const* argv) {
 
     std::cout << LICENSE_HEADER << std::endl;
 
+    if (!isatty(STDOUT_FILENO))
+        std::cerr << "Danger: bicos-cli does not have a stable CLI interface\n";
+    if (args.count("no-dupes") && !args.count("lr-maxdiff"))
+        std::cerr << "'no-dupes' is the default when 'lr-maxdiff' is not set.\n";
+
     std::filesystem::path folder0 = args["folder0"].as<std::string>();
-    std::filesystem::path outfile = args["outfile"].as<std::string>();
+    std::filesystem::path outfile = args["out"].as<std::string>();
     std::optional<std::filesystem::path> folder1 = std::nullopt;
     std::optional<std::filesystem::path> q_store = std::nullopt;
 
@@ -116,30 +157,49 @@ int main(int argc, char const* const* argv) {
         }
 
         if (lstack.size() != rstack.size())
-            throw std::invalid_argument(format("Left stack: {}, right stack: {} images", lstack.size(), rstack.size()));
+            throw std::invalid_argument(
+                format("Left stack: {}, right stack: {} images", lstack.size(), rstack.size())
+            );
 
         std::cout << "Loaded " << lstack.size() + rstack.size() << " images total\n";
     }
 
-    cv::Mat_<BICOS::disparity_t> disp;
+    cv::Mat disp;
+
+    // clang-format off
 
     BICOS::Config c {
-        .nxcorr_thresh = args["threshold"].as<double>(),
+        .nxcorr_threshold = args["threshold"].as<float>(),
         .mode = TransformMode::FULL
     };
+    if (c.nxcorr_threshold.value() <= 0.0)
+        c.nxcorr_threshold = std::nullopt;
 
+    bool need_corrmap = args.count("corrmap");
+
+    if (need_corrmap && !c.nxcorr_threshold.has_value()) {
+        c.nxcorr_threshold = -1.0f;
+        std::cerr << "Computing with nxcorr-threshold of " << c.nxcorr_threshold.value() << " because 'corrmap' is set\n";
+    }
     if (args.count("step"))
         c.subpixel_step = args["step"].as<float>();
     if (args.count("limited"))
         c.mode = TransformMode::LIMITED;
     if (args.count("variance"))
-        c.min_variance = args["variance"].as<double>();
+        if (auto minvar = args["variance"].as<float>(); minvar > 0.0)
+            c.min_variance = minvar;
 #ifdef BICOS_CUDA
-    if (args.count("single"))
-        c.precision = Precision::SINGLE;
+    if (args.count("double"))
+        c.precision = Precision::DOUBLE;
 #endif
-    if (args.count("lr-maxdiff"))
-        c.variant = Variant::WithReverse { .max_lr_diff = (int)args["lr-maxdiff"].as<uint>() };
+    if (args.count("lr-maxdiff")) {
+        c.variant = Variant::Consistency {
+            .max_lr_diff = (int)args["lr-maxdiff"].as<uint>(),
+            .no_dupes = args.count("no-dupes") > 0
+        };
+    }
+
+    // clang-format on
 
 #ifdef BICOS_CUDA
 
@@ -175,9 +235,11 @@ int main(int argc, char const* const* argv) {
 
 #else
 
+    cv::Mat_<float> corrmap;
+
     auto tick = std::chrono::high_resolution_clock::now();
 
-    BICOS::match(lstack, rstack, disp, c);
+    BICOS::match(lstack, rstack, disp, c, need_corrmap ? &corrmap : nullptr);
 
     DELTA_MS(match);
 
@@ -185,7 +247,14 @@ int main(int argc, char const* const* argv) {
 
 #endif
 
-    save_disparity(disp, outfile);
+    save_image(disp, outfile);
+    if (need_corrmap)
+        save_image(
+            corrmap,
+            outfile.parent_path()
+                / (outfile.stem().string() + "-corrmap" + outfile.extension().string()),
+            cv::COLORMAP_VIRIDIS
+        );
 
     if (q_store.has_value()) {
         cv::Mat Q;
@@ -198,7 +267,16 @@ int main(int argc, char const* const* argv) {
 
         cv::reprojectImageTo3D(disp, points, Q, false, CV_32F);
 
-        save_pointcloud(points, disp, outfile);
+        switch (disp.type()) {
+            case CV_16SC1:
+                save_pointcloud<int16_t>(points, disp, outfile);
+                break;
+            case CV_32FC1:
+                save_pointcloud<float>(points, disp, outfile);
+                break;
+            default:
+                throw std::runtime_error(format("Got unexpected disparity type: {}", disp.type()));
+        }
     }
 
     return 0;

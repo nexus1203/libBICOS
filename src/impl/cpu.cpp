@@ -19,6 +19,8 @@
 #include "common.hpp"
 #include "compat.hpp"
 
+#include <variant>
+
 #include "cpu.hpp"
 
 #include "impl/common.hpp"
@@ -34,16 +36,16 @@ template <typename TInput, typename TDescriptor>
 static void match_impl(
     const cv::Mat& stack0,
     const cv::Mat& stack1,
-    double thresh,
+    std::optional<float> min_nxc,
     std::optional<float> step,
-    std::optional<double> min_var,
-    std::optional<int> lr_max_diff,
+    std::optional<float> min_var,
+    SearchVariant variant,
     TransformMode mode,
     cv::Size sz,
     size_t n,
-    cv::Mat_<disparity_t>& out
+    cv::Mat& out,
+    cv::Mat *corrmap
 ) {
-    cv::Mat1s raw_disp;
     std::unique_ptr<StepBuf<TDescriptor>> desc0, desc1;
     switch (mode) {
         case TransformMode::FULL: {
@@ -56,22 +58,36 @@ static void match_impl(
         } break;
     }
 
-    if (lr_max_diff.has_value())
-        raw_disp = bicos<TDescriptor, BICOSVariant::WITH_REVERSE>(desc0, desc1, lr_max_diff.value(), sz);
-    else
-        raw_disp = bicos<TDescriptor, BICOSVariant::DEFAULT>(desc0, desc1, -1, sz);
+    if (std::holds_alternative<Variant::Consistency>(variant)) {
+        Variant::Consistency consistency = std::get<Variant::Consistency>(variant);
+        if (consistency.no_dupes)
+            bicos<TDescriptor, BICOSVariant::NO_DUPES | BICOSVariant::CONSISTENCY>(desc0, desc1, consistency.max_lr_diff, sz, out);
+        else
+            bicos<TDescriptor, BICOSVariant::CONSISTENCY>(desc0, desc1, consistency.max_lr_diff, sz, out);
+    } else
+        bicos<TDescriptor, BICOSVariant::NO_DUPES>(desc0, desc1, -1, sz, out);
 
-    if (step.has_value())
-        agree_subpixel<TInput>(raw_disp, stack0, stack1, n, thresh, step.value(), min_var, out);
-    else
-        agree<TInput>(raw_disp, stack0, stack1, n, thresh, min_var, out);
+    if (min_nxc.has_value()) {
+        if (corrmap) {
+            corrmap->create(sz, cv::DataType<float>::type);
+            corrmap->setTo(0.f);
+        }
+
+        if (step.has_value()) {
+            cv::Mat_<float> floatdisp;
+            agree_subpixel<TInput>(out, stack0, stack1, n, min_nxc.value(), step.value(), min_var, floatdisp, corrmap);
+            out = floatdisp;
+        } else
+            agree<TInput>(out, stack0, stack1, n, min_nxc.value(), min_var, corrmap);
+    }
 }
 
 void match(
     const std::vector<cv::Mat>& _stack0,
     const std::vector<cv::Mat>& _stack1,
-    cv::Mat_<disparity_t>& disparity,
-    Config cfg
+    cv::Mat& disparity,
+    Config cfg,
+    cv::Mat *corrmap
 ) {
     const size_t n = _stack0.size();
     const int depth = _stack0.front().depth();
@@ -93,31 +109,26 @@ void match(
         : 4 * n - 7;
 
     const cv::Size size = _stack0.front().size();
-    double min_var = n * cfg.min_variance.value_or(1.0);
-    std::optional<int> lr_max_diff = std::nullopt;
-    if (std::holds_alternative<Variant::WithReverse>(cfg.variant))
-        lr_max_diff = std::get<Variant::WithReverse>(cfg.variant).max_lr_diff;
-
-    cv::Mat1s raw_disp;
+    float min_var = n * cfg.min_variance.value_or(1.0);
 
     switch (required_bits) {
         case 0 ... 32:
             if (depth == CV_8U)
-                match_impl<uint8_t, uint32_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, lr_max_diff, cfg.mode, size, n, disparity);
+                match_impl<uint8_t, uint32_t>(stack0, stack1, cfg.nxcorr_threshold, cfg.subpixel_step, min_var, cfg.variant, cfg.mode, size, n, disparity, corrmap);
             else
-                match_impl<uint16_t, uint32_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, lr_max_diff, cfg.mode, size, n, disparity);
+                match_impl<uint16_t, uint32_t>(stack0, stack1, cfg.nxcorr_threshold, cfg.subpixel_step, min_var, cfg.variant, cfg.mode, size, n, disparity, corrmap);
             break;
         case 33 ... 64:
             if (depth == CV_8U)
-                match_impl<uint8_t, uint64_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, lr_max_diff, cfg.mode, size, n, disparity);
+                match_impl<uint8_t, uint64_t>(stack0, stack1, cfg.nxcorr_threshold, cfg.subpixel_step, min_var, cfg.variant, cfg.mode, size, n, disparity, corrmap);
             else
-                match_impl<uint16_t, uint64_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, lr_max_diff, cfg.mode, size, n, disparity);
+                match_impl<uint16_t, uint64_t>(stack0, stack1, cfg.nxcorr_threshold, cfg.subpixel_step, min_var, cfg.variant, cfg.mode, size, n, disparity, corrmap);
             break;
         case 65 ... 128:
             if (depth == CV_8U)
-                match_impl<uint8_t, uint128_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, lr_max_diff, cfg.mode, size, n, disparity);
+                match_impl<uint8_t, uint128_t>(stack0, stack1, cfg.nxcorr_threshold, cfg.subpixel_step, min_var, cfg.variant, cfg.mode, size, n, disparity, corrmap);
             else
-                match_impl<uint16_t, uint128_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, lr_max_diff, cfg.mode, size, n, disparity);
+                match_impl<uint16_t, uint128_t>(stack0, stack1, cfg.nxcorr_threshold, cfg.subpixel_step, min_var, cfg.variant, cfg.mode, size, n, disparity, corrmap);
             break;
         default:
             throw std::invalid_argument(BICOS::format("input stacks too large, would require {} bits", required_bits));

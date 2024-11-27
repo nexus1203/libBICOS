@@ -29,10 +29,11 @@
 namespace BICOS {
 
 void match(
-    const std::vector<InputImage>& stack0,
-    const std::vector<InputImage>& stack1,
-    OutputImage& disparity,
-    Config cfg = Config()
+    const std::vector<Image>& stack0,
+    const std::vector<Image>& stack1,
+    Image& disparity,
+    Config cfg = Config {},
+    Image *corrmap = nullptr
 #if defined(BICOS_CUDA)
     ,
     cv::cuda::Stream& stream = cv::cuda::Stream::Null()
