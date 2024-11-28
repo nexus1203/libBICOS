@@ -113,7 +113,7 @@ void bench_agree_kernel(benchmark::State& state) {
         state.ResumeTiming();
 
         cuda::agree_kernel<TInput, double, cuda::NXCVariant::MINVAR, false>
-            <<<grid, block>>>(randdisp_dev, devptr, n, thresh, minvar);
+            <<<grid, block>>>(randdisp_dev, devptr, n, thresh, minvar, cv::cuda::PtrStepSz<double>());
         cudaDeviceSynchronize();
     }
 
@@ -151,7 +151,7 @@ void bench_agree_subpixel_kernel(benchmark::State& state) {
 
     for (auto _: state) {
         cuda::agree_subpixel_kernel<TInput, double, cuda::NXCVariant::MINVAR, false>
-            <<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, out);
+            <<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, out, cv::cuda::PtrStepSz<double>());
         cudaDeviceSynchronize();
     }
 
@@ -203,7 +203,7 @@ void bench_agree_subpixel_kernel_smem(benchmark::State& state) {
 
     for (auto _: state) {
         cuda::agree_subpixel_kernel_smem<TInput, double, cuda::NXCVariant::MINVAR, false>
-            <<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, minvar, out);
+            <<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, minvar, out, cv::cuda::PtrStepSz<double>());
         cudaDeviceSynchronize();
     }
 
