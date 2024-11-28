@@ -42,7 +42,7 @@ static __device__ __forceinline__ int ham(uint128_t a, uint128_t b) {
 #endif
 
 template<typename TDescriptor, TDescriptor (*FLoad)(const TDescriptor*), int FLAGS>
-static __device__ __forceinline__ int16_t
+static __device__ __forceinline__ int
 bicos_search(TDescriptor d0, const TDescriptor* row1, size_t cols) {
     int best_col1 = -1, min_cost = INT_MAX, num_duplicate_minima = 0;
 

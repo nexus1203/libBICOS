@@ -107,7 +107,7 @@ __global__ void agree_kernel(
     if (d == INVALID_DISP<int16_t>)
         return;
 
-    int col1 = col - d;
+    const int col1 = col - d;
 
     if (col1 < 0 || raw_disp.cols <= col1) {
         d = INVALID_DISP<int16_t>;

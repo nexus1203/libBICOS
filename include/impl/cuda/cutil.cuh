@@ -18,9 +18,11 @@
 
 #pragma once
 
-#include <opencv2/core.hpp>
-#include <opencv2/core/cuda/common.hpp>
 #include <sstream>
+
+#include <opencv2/core.hpp>
+#include <opencv2/core/cuda.hpp>
+#include <opencv2/core/cuda/common.hpp>
 
 #include "common.hpp"
 
@@ -48,7 +50,8 @@ namespace BICOS::impl::cuda {
 template<class T>
 inline dim3 max_blocksize(T fun, size_t smem_size = 0) {
     int _minGridSize, blockSize;
-    assertCudaSuccess(cudaOccupancyMaxPotentialBlockSize(&_minGridSize, &blockSize, fun, smem_size));
+    assertCudaSuccess(cudaOccupancyMaxPotentialBlockSize(&_minGridSize, &blockSize, fun, smem_size)
+    );
     return dim3(blockSize);
 }
 
@@ -113,6 +116,16 @@ __device__ __forceinline__ __uint128_t load_datacache<__uint128_t>(const __uint1
 template<typename T>
 __device__ __forceinline__ T load_deref(const T* p) {
     return *p;
+}
+
+template<typename T>
+void init_disparity(
+    cv::cuda::GpuMat& map,
+    cv::Size size,
+    cv::cuda::Stream& stream = cv::cuda::Stream::Null()
+) {
+    map.create(size, cv::DataType<T>::type);
+    map.setTo(INVALID_DISP<T>, stream);
 }
 
 } // namespace BICOS::impl::cuda
