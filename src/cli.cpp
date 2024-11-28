@@ -18,12 +18,6 @@
 
 #include "common.hpp"
 
-#ifdef __GNUG__
-#include <csignal>
-#include <execinfo.h>
-#include <cxxabi.h>
-#endif
-
 #include <chrono>
 #include <filesystem>
 #include <iostream>
@@ -56,34 +50,7 @@ using namespace BICOS;
     "it under the conditions of the GNU LGPL-3.0-or-later license.\n" \
     "Refer to https://github.com/JMUWRobotics/libBICOS for details.\n"
 
-#ifdef __GNUG__
-void backtracer(int sig) {
-    void *addresses[10];
-    char **symbols;
-    size_t n;
-
-    // this leaks memory but at this point it does not matter
-
-    n = backtrace(addresses, 10);
-
-    std::cerr << BICOS::format("Caught signal {} ({})", sig, strsignal(sig)) << std::endl;
-    symbols = backtrace_symbols(addresses, n);
-    
-    for (size_t i = 0; i < n; ++i)
-        std::cerr << abi::__cxa_demangle(symbols[i], NULL, NULL, NULL) << std::endl;
-
-    exit(sig);
-}
-#endif
-
 int main(int argc, char const* const* argv) {
-
-#ifdef __GNUG__
-    signal(SIGSEGV, backtracer);
-    signal(SIGTERM, backtracer);
-    signal(SIGABRT, backtracer);
-#endif
-
     cxxopts::Options opts(argv[0], "cli to process images with BICOS");
 
     // clang-format off
