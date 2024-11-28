@@ -33,19 +33,38 @@
 
 namespace BICOS::impl::cuda {
 
+template<typename TDescriptor>
+static auto select_bicos_kernel(SearchVariant variant, bool smem) {
+    if (std::holds_alternative<Variant::Consistency>(variant)) {
+        auto consistency = std::get<Variant::Consistency>(variant);
+        if (consistency.no_dupes)
+            return smem
+                ? bicos_kernel_smem<TDescriptor, BICOSFLAGS_CONSISTENCY | BICOSFLAGS_NODUPES>
+                : bicos_kernel<TDescriptor, BICOSFLAGS_CONSISTENCY | BICOSFLAGS_NODUPES>;
+        else
+            return smem ? bicos_kernel_smem<TDescriptor, BICOSFLAGS_CONSISTENCY>
+                        : bicos_kernel<TDescriptor, BICOSFLAGS_CONSISTENCY>;
+    } else if (std::holds_alternative<Variant::NoDuplicates>(variant))
+        return smem ? bicos_kernel_smem<TDescriptor, BICOSFLAGS_NODUPES>
+                    : bicos_kernel<TDescriptor, BICOSFLAGS_NODUPES>;
+
+    throw std::invalid_argument("unimplemented");
+}
+
 template<typename TInput, typename TDescriptor>
 static void match_impl(
     const std::vector<cv::cuda::GpuMat>& _stack0,
     const std::vector<cv::cuda::GpuMat>& _stack1,
     size_t n_images,
     cv::Size sz,
-    double nxcorr_threshold,
+    std::optional<float> min_nxc,
     Precision precision,
     TransformMode mode,
     std::optional<float> subpixel_step,
-    std::optional<double> min_var,
-    std::optional<int> lr_max_diff,
+    std::optional<float> min_var,
+    SearchVariant variant,
     cv::cuda::GpuMat& out,
+    cv::cuda::GpuMat* corrmap,
     cv::cuda::Stream& _stream
 ) {
     std::vector<cv::cuda::PtrStepSz<TInput>> ptrs_host(2 * n_images);
@@ -109,9 +128,10 @@ static void match_impl(
     cv::cuda::GpuMat bicos_disp(sz, cv::DataType<int16_t>::type);
     bicos_disp.setTo(INVALID_DISP<int16_t>, _stream);
 
-    auto kernel = lr_max_diff.has_value()
-        ? bicos_kernel_smem<TDescriptor, BICOSVariant::WITH_REVERSE>
-        : bicos_kernel_smem<TDescriptor, BICOSVariant::DEFAULT>;
+    auto kernel = select_bicos_kernel<TDescriptor>(variant, true);
+    int lr_max_diff = std::holds_alternative<Variant::Consistency>(variant)
+        ? std::get<Variant::Consistency>(variant).max_lr_diff
+        : -1;
 
     size_t smem_size = sz.width * sizeof(TDescriptor);
     bool bicos_smem_fits = cudaSuccess
@@ -122,59 +142,98 @@ static void match_impl(
         block = max_blocksize(kernel, smem_size);
         grid = create_grid(block, sz);
 
-        kernel<<<grid, block, smem_size, mainstream>>>(descr0_dev, descr1_dev, lr_max_diff.value_or(-1), bicos_disp);
+        kernel<<<grid, block, smem_size, mainstream>>>(
+            descr0_dev,
+            descr1_dev,
+            lr_max_diff,
+            bicos_disp
+        );
     } else {
-        kernel = lr_max_diff.has_value()
-            ? bicos_kernel<TDescriptor, BICOSVariant::WITH_REVERSE>
-            : bicos_kernel<TDescriptor, BICOSVariant::DEFAULT>;
+        kernel = select_bicos_kernel<TDescriptor>(variant, false);
 
         block = max_blocksize(kernel);
         grid = create_grid(block, sz);
 
-        kernel<<<grid, block, 0, mainstream>>>(descr0_dev, descr1_dev, lr_max_diff.value_or(-1), bicos_disp);
+        kernel<<<grid, block, 0, mainstream>>>(descr0_dev, descr1_dev, lr_max_diff, bicos_disp);
     }
     assertCudaSuccess(cudaGetLastError());
 
+    // optimized for subpixel interpolation.
+    // keep `out` as output for the interpolated
+    // depth map.
+
+    if (!min_nxc.has_value()) {
+        out = bicos_disp;
+        return;
+    }
+
     /* nxcorr */
 
-    out.create(sz, cv::DataType<float>::type);
-    out.setTo(INVALID_DISP<float>, _stream);
+    if (corrmap)
+        corrmap->create(sz, precision == Precision::SINGLE ? CV_32FC1 : CV_64FC1);
 
     // clang-format off
+    // :(
 
-    switch (precision) {
-    case Precision::SINGLE: {
+    auto invoke = [&](auto kernel, auto&&... args) {
+        auto block = max_blocksize(kernel);
+        auto grid  = create_grid(block, sz);
+        kernel<<<grid, block, 0, mainstream>>>(std::forward<decltype(args)>(args)...);
+    };
 
-        static agree_kernel_t<TInput, float> lut[2][2] = {
-            { agree_kernel<TInput, float, NXCVariant::PLAIN>, agree_kernel<TInput, float, NXCVariant::MINVAR> },
-            { agree_subpixel_kernel<TInput, float, NXCVariant::PLAIN>, agree_subpixel_kernel<TInput, float, NXCVariant::MINVAR> }
-        };
-
-        auto kernel = lut[subpixel_step.has_value()][min_var.has_value()];
-
-        block = max_blocksize(kernel);
-        grid = create_grid(block, sz);
-
-        kernel<<<grid, block, 0, mainstream>>>(
-        bicos_disp, ptrs_dev, n_images, nxcorr_threshold, subpixel_step.value_or(0.0f), n_images * min_var.value_or(0.0f), out);
-
-    } break;
-    case Precision::DOUBLE: {
-
-        static agree_kernel_t<TInput, double> lut[2][2] = {
-            { agree_kernel<TInput, double, NXCVariant::PLAIN>, agree_kernel<TInput, double, NXCVariant::MINVAR> },
-            { agree_subpixel_kernel<TInput, double, NXCVariant::PLAIN>, agree_subpixel_kernel<TInput, double, NXCVariant::MINVAR> }
-        };
-
-        auto kernel = lut[subpixel_step.has_value()][min_var.has_value()];
-
-        block = max_blocksize(kernel);
-        grid = create_grid(block, sz);
-
-        kernel<<<grid, block, 0, mainstream>>>(
-        bicos_disp, ptrs_dev, n_images, nxcorr_threshold, subpixel_step.value_or(0.0f), n_images * min_var.value_or(0.0), out);
-
-    } break;
+    if (subpixel_step.has_value()) {
+        if (corrmap) {
+            if (min_var.has_value()) {
+                if (precision == Precision::SINGLE)
+                    invoke(agree_subpixel_kernel<TInput, float, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), subpixel_step.value(), out, *corrmap);
+                else
+                    invoke(agree_subpixel_kernel<TInput, double, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), subpixel_step.value(), out, *corrmap);
+            } else {
+                if (precision == Precision::SINGLE)
+                    invoke(agree_subpixel_kernel<TInput, float, NXCVariant::PLAIN, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0f, subpixel_step.value(), out, *corrmap);
+                else
+                    invoke(agree_subpixel_kernel<TInput, double, NXCVariant::PLAIN, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0, subpixel_step.value(), out, *corrmap);
+            }
+        } else {
+            if (min_var.has_value()) {
+                if (precision == Precision::SINGLE)
+                    invoke(agree_subpixel_kernel<TInput, float, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), subpixel_step.value(), out, cv::cuda::PtrStepSz<float>());
+                else
+                    invoke(agree_subpixel_kernel<TInput, double, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), subpixel_step.value(), out, cv::cuda::PtrStepSz<double>());
+            } else {
+                if (precision == Precision::SINGLE)
+                    invoke(agree_subpixel_kernel<TInput, float, NXCVariant::PLAIN, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0f, subpixel_step.value(), out, cv::cuda::PtrStepSz<float>());
+                else
+                    invoke(agree_subpixel_kernel<TInput, double, NXCVariant::PLAIN, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0, subpixel_step.value(), out, cv::cuda::PtrStepSz<double>());
+            }
+        }
+    } else {
+        if (corrmap) {
+            if (min_var.has_value()) {
+                if (precision == Precision::SINGLE)
+                    invoke(agree_kernel<TInput, float, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), *corrmap);
+                else
+                    invoke(agree_kernel<TInput, double, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), *corrmap);
+            } else {
+                if (precision == Precision::SINGLE)
+                    invoke(agree_kernel<TInput, float, NXCVariant::PLAIN, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0f, *corrmap);
+                else
+                    invoke(agree_kernel<TInput, double, NXCVariant::PLAIN, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0, *corrmap);
+            }
+        } else {
+            if (min_var.has_value()) {
+                if (precision == Precision::SINGLE)
+                    invoke(agree_kernel<TInput, float, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), cv::cuda::PtrStepSz<float>());
+                else
+                    invoke(agree_kernel<TInput, double, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), cv::cuda::PtrStepSz<double>());
+            } else {
+                if (precision == Precision::SINGLE)
+                    invoke(agree_kernel<TInput, float, NXCVariant::PLAIN, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0f, cv::cuda::PtrStepSz<float>());
+                else
+                    invoke(agree_kernel<TInput, double, NXCVariant::PLAIN, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0, cv::cuda::PtrStepSz<double>());
+            }
+        }
+        out = bicos_disp;
     }
 
     // clang-format on
@@ -187,6 +246,7 @@ void match(
     const std::vector<cv::cuda::GpuMat>& _stack1,
     cv::cuda::GpuMat& disparity,
     Config cfg,
+    cv::cuda::GpuMat* corrmap,
     cv::cuda::Stream& stream
 ) {
     const size_t n = _stack0.size();
@@ -199,29 +259,25 @@ void match(
         ? n * n - 2 * n + 3
         : 4 * n - 7;
 
-    std::optional<int> lr_max_diff = std::nullopt;
-    if (std::holds_alternative<Variant::WithReverse>(cfg.variant))
-        lr_max_diff = std::get<Variant::WithReverse>(cfg.variant).max_lr_diff;
-
     switch (required_bits) {
         case 0 ... 32:
             if (depth == CV_8U)
-                match_impl<uint8_t, uint32_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, lr_max_diff, disparity, stream);
+                match_impl<uint8_t, uint32_t>(_stack0, _stack1, n, sz, cfg.nxcorr_threshold, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, cfg.variant, disparity, corrmap, stream);
             else
-                match_impl<uint16_t, uint32_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, lr_max_diff, disparity, stream);
+                match_impl<uint16_t, uint32_t>(_stack0, _stack1, n, sz, cfg.nxcorr_threshold, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, cfg.variant, disparity, corrmap, stream);
             break;
         case 33 ... 64:
             if (depth == CV_8U)
-                match_impl<uint8_t, uint64_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, lr_max_diff, disparity, stream);
+                match_impl<uint8_t, uint64_t>(_stack0, _stack1, n, sz, cfg.nxcorr_threshold, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, cfg.variant, disparity, corrmap, stream);
             else
-                match_impl<uint16_t, uint64_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, lr_max_diff, disparity, stream);
+                match_impl<uint16_t, uint64_t>(_stack0, _stack1, n, sz, cfg.nxcorr_threshold, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, cfg.variant, disparity, corrmap, stream);
             break;
 #ifdef BICOS_CUDA_HAS_UINT128
         case 65 ... 128:
             if (depth == CV_8U)
-                match_impl<uint8_t, uint128_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, lr_max_diff, disparity, stream);
+                match_impl<uint8_t, uint128_t>(_stack0, _stack1, n, sz, cfg.nxcorr_threshold, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, cfg.variant, disparity, corrmap, stream);
             else
-                match_impl<uint16_t, uint128_t>(_stack0, _stack1, n, sz, cfg.nxcorr_thresh, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, lr_max_diff, disparity, stream);
+                match_impl<uint16_t, uint128_t>(_stack0, _stack1, n, sz, cfg.nxcorr_threshold, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, cfg.variant, disparity, corrmap, stream);
             break;
 #endif
         default:

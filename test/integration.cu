@@ -39,19 +39,19 @@ int main(int argc, char const* const* argv) {
     matvec_to_gpu(lhost, rhost, ldev, rdev);
 
     for (double thresh: { 0.5, 0.75, 0.9 }) {
-        Config cfg { .nxcorr_thresh = thresh,
+        Config cfg { .nxcorr_threshold = thresh,
                      .subpixel_step = std::nullopt,
                      .mode = TransformMode::LIMITED,
                      .precision = Precision::DOUBLE };
 
-        cv::Mat_<disparity_t> dhost, ddev_host;
+        cv::Mat dhost, ddev_host;
         cv::cuda::GpuMat ddev;
 
         cv::cuda::Stream stream;
-        impl::cuda::match(ldev, rdev, ddev, cfg, stream);
+        impl::cuda::match(ldev, rdev, ddev, cfg, nullptr, stream);
         ddev.download(ddev_host, stream);
 
-        impl::cpu::match(lhost, rhost, dhost, cfg);
+        impl::cpu::match(lhost, rhost, dhost, cfg, nullptr);
         stream.waitForCompletion();
 
         if (!equals(dhost, ddev_host)) {
@@ -62,10 +62,10 @@ int main(int argc, char const* const* argv) {
         for (float step: { 0.1f, 0.25f, 0.5f }) {
             cfg.subpixel_step = step;
 
-            impl::cuda::match(ldev, rdev, ddev, cfg, stream);
+            impl::cuda::match(ldev, rdev, ddev, cfg, nullptr, stream);
             ddev.download(ddev_host, stream);
 
-            impl::cpu::match(lhost, rhost, dhost, cfg);
+            impl::cpu::match(lhost, rhost, dhost, cfg, nullptr);
             stream.waitForCompletion();
 
             if (!equals(dhost, ddev_host)) {

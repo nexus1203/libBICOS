@@ -29,16 +29,18 @@
 namespace BICOS {
 
 void save_image(const cv::Mat& image, std::filesystem::path outfile, cv::ColormapTypes cmap) {
-    cv::Mat normalized, colorized, mask;
+    cv::Mat normalized, colorized;
+    cv::MatExpr mask;
 
-    image.copyTo(mask);
-    if (mask.type() == CV_32FC1)
-        cv::patchNaNs(mask, -1.0);
+    if (image.type() == CV_32FC1)
+        mask = image != image;
+    else
+        mask = image == -1;
 
     cv::normalize(image, normalized, 0, 255, cv::NORM_MINMAX, CV_8UC1);
-    normalized.setTo(0, mask == -1);
+    normalized.setTo(0, mask);
     cv::applyColorMap(normalized, colorized, cmap);
-    colorized.setTo(0, mask == -1);
+    colorized.setTo(0, mask);
 
     if (!cv::imwrite(outfile.replace_extension("png"), colorized))
         std::cerr << "Could not save to\t" << outfile << std::endl;

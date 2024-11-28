@@ -44,7 +44,7 @@ static float nxcorr(const T* pix0, const T* pix1, size_t n, std::optional<float>
     if (minvar.has_value() && (var0 < *minvar || var1 < *minvar))
         return -1.f;
 
-    return covar / std::sqrtf(var0 * var1);
+    return covar / std::sqrt(var0 * var1);
 }
 
 template<typename TInput>

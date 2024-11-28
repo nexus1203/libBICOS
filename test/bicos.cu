@@ -57,7 +57,8 @@ int main(void) {
 
     assertCudaSuccess(cudaGetLastError());
 
-    cv::Mat1s disp = cpu::bicos<DESCRIPTOR_TYPE, BICOS_VARIANT>(ld, rd, 3, randsize);
+    cv::Mat1s disp;
+    cpu::bicos<DESCRIPTOR_TYPE, BICOS_VARIANT>(ld, rd, 3, randsize, disp);
 
     assertCudaSuccess(cudaDeviceSynchronize());
 

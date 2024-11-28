@@ -61,7 +61,10 @@ endif
 
 # complaints about opencv inlines
 add_project_arguments('-Wno-deprecated-enum-enum-conversion', language: 'cpp')
-add_project_arguments('-Xcompiler=-Wno-deprecated-enum-enum-conversion', language: 'cuda')
+add_project_arguments(
+    '-Xcompiler=-Wno-deprecated-enum-enum-conversion',
+    '--expt-relaxed-constexpr',
+language: 'cuda')
 
 if impl == 'cpu'
     add_project_arguments('-DBICOS_CPU', language: 'cpp')
@@ -180,14 +183,14 @@ if impl == 'cuda'
     endforeach
 
     foreach descriptor_depth : depths
-        foreach variant : ['DEFAULT', 'WITH_REVERSE']
+        foreach variant : ['NODUPES', 'CONSISTENCY']
             testname = f'bicos_@descriptor_depth@_' + variant.to_lower()
             test(testname,
                 executable('test_' + testname,
                     sources: srcs + 'test/bicos.cu',
                     dependencies: deps,
                     include_directories: incls,
-                    cuda_args: ['-DBICOS_CUDA', f'-DDESCRIPTOR_TYPE=uint@descriptor_depth@_t', f'-DBICOS_VARIANT=BICOSVariant::@variant@'],
+                    cuda_args: ['-DBICOS_CUDA', f'-DDESCRIPTOR_TYPE=uint@descriptor_depth@_t', f'-DBICOS_VARIANT=BICOSFLAGS_@variant@'],
                     cpp_args: '-DBICOS_CPU',
                     override_options: override_options,
                 )

@@ -19,9 +19,9 @@
 #pragma once
 
 #ifdef __CUDACC__
-    #define LOCATION __device__ __forceinline__
+    #define BITFIELD_LOCATION __device__ __forceinline__
 #else
-    #define LOCATION
+    #define BITFIELD_LOCATION
 #endif
 
 namespace BICOS::impl {
@@ -31,7 +31,7 @@ struct Bitfield {
     unsigned int i = 0u;
     T v = T(0);
 
-    LOCATION void set(bool value) {
+    BITFIELD_LOCATION void set(bool value) {
 #ifdef BICOS_DEBUG
         if (sizeof(T) * 8 <= i)
     #ifdef __CUDACC__

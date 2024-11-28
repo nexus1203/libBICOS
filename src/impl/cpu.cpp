@@ -19,6 +19,7 @@
 #include "common.hpp"
 #include "compat.hpp"
 
+#include <limits>
 #include <variant>
 
 #include "cpu.hpp"
@@ -58,19 +59,24 @@ static void match_impl(
         } break;
     }
 
+    // this is optimized for the case when no subpixel interpolation is required.
+    // write directly to out, which ideally, is int16_t.
+    // only allocate a new buffer if we need floating point,
+    // which is in case of subpixel interpolation
+
     if (std::holds_alternative<Variant::Consistency>(variant)) {
         Variant::Consistency consistency = std::get<Variant::Consistency>(variant);
         if (consistency.no_dupes)
-            bicos<TDescriptor, BICOSVariant::NO_DUPES | BICOSVariant::CONSISTENCY>(desc0, desc1, consistency.max_lr_diff, sz, out);
+            bicos<TDescriptor, BICOSFLAGS_NODUPES | BICOSFLAGS_CONSISTENCY>(desc0, desc1, consistency.max_lr_diff, sz, out);
         else
-            bicos<TDescriptor, BICOSVariant::CONSISTENCY>(desc0, desc1, consistency.max_lr_diff, sz, out);
+            bicos<TDescriptor, BICOSFLAGS_CONSISTENCY>(desc0, desc1, consistency.max_lr_diff, sz, out);
     } else
-        bicos<TDescriptor, BICOSVariant::NO_DUPES>(desc0, desc1, -1, sz, out);
+        bicos<TDescriptor, BICOSFLAGS_NODUPES>(desc0, desc1, -1, sz, out);
 
     if (min_nxc.has_value()) {
         if (corrmap) {
             corrmap->create(sz, cv::DataType<float>::type);
-            corrmap->setTo(0.f);
+            corrmap->setTo(std::numeric_limits<float>::quiet_NaN());
         }
 
         if (step.has_value()) {

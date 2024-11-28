@@ -41,7 +41,7 @@ static __device__ __forceinline__ int ham(uint128_t a, uint128_t b) {
 }
 #endif
 
-template<typename TDescriptor, TDescriptor (*FLoad)(const TDescriptor*)>
+template<typename TDescriptor, TDescriptor (*FLoad)(const TDescriptor*), int FLAGS>
 static __device__ __forceinline__ int16_t
 bicos_search(TDescriptor d0, const TDescriptor* row1, size_t cols) {
     int best_col1 = -1, min_cost = INT_MAX, num_duplicate_minima = 0;
@@ -54,19 +54,21 @@ bicos_search(TDescriptor d0, const TDescriptor* row1, size_t cols) {
         if (cost < min_cost) {
             min_cost = cost;
             best_col1 = col1;
-            num_duplicate_minima = 0;
-        } else if (cost == min_cost) {
-            num_duplicate_minima++;
-        }
+            if constexpr (FLAGS & BICOSFLAGS_NODUPES)
+                num_duplicate_minima = 0;
+        } else if constexpr (FLAGS & BICOSFLAGS_NODUPES)
+            if (cost == min_cost)
+                num_duplicate_minima++;
     }
 
-    if (0 < num_duplicate_minima)
-        return -1;
+    if constexpr (FLAGS & BICOSFLAGS_NODUPES)
+        if (0 < num_duplicate_minima)
+            return -1;
 
     return best_col1;
 }
 
-template<typename TDescriptor, BICOSVariant VARIANT>
+template<typename TDescriptor, int FLAGS>
 __global__ void bicos_kernel_smem(
     const StepBuf<TDescriptor>* descr0,
     const StepBuf<TDescriptor>* descr1,
@@ -92,20 +94,20 @@ __global__ void bicos_kernel_smem(
 
     int best_col1 = -1;
     if (col < out.cols) {
-        best_col1 = bicos_search<TDescriptor, load_deref>(
+        best_col1 = bicos_search<TDescriptor, load_deref, FLAGS>(
             load_datacache(descr0->row(row) + col),
             row1,
             out.cols
         );
     }
 
-    if constexpr (VARIANT == BICOSVariant::WITH_REVERSE) {
+    if constexpr (FLAGS & BICOSFLAGS_CONSISTENCY) {
         __syncthreads();
 
         TDescriptor d1;
         if (best_col1 != -1)
             d1 = row1[best_col1];
-        
+
         TDescriptor* row0 = (TDescriptor*)_row;
 
         for (size_t c = threadIdx.x; c < out.cols; c += blockDim.x)
@@ -116,7 +118,11 @@ __global__ void bicos_kernel_smem(
         if (col >= out.cols || best_col1 == -1)
             return;
 
-        int reverse_col0 = bicos_search<TDescriptor, load_deref>(d1, row0, out.cols);
+        int reverse_col0 = bicos_search<TDescriptor, load_deref, FLAGS>(
+            d1,
+            row0,
+            out.cols
+        );
 
         if (reverse_col0 != -1 && abs(col - reverse_col0) <= max_lr_diff)
             out(row, col) = abs((col + reverse_col0) / 2 - best_col1);
@@ -127,7 +133,7 @@ __global__ void bicos_kernel_smem(
     }
 }
 
-template<typename TDescriptor, BICOSVariant VARIANT>
+template<typename TDescriptor, int FLAGS>
 __global__ void bicos_kernel(
     const StepBuf<TDescriptor>* descr0,
     const StepBuf<TDescriptor>* descr1,
@@ -140,7 +146,7 @@ __global__ void bicos_kernel(
     if (out.cols <= col || out.rows <= row)
         return;
 
-    int best_col1 = bicos_search<TDescriptor, load_datacache>(
+    int best_col1 = bicos_search<TDescriptor, load_datacache, FLAGS>(
         load_datacache(descr0->row(row) + col),
         descr1->row(row),
         out.cols
@@ -149,12 +155,13 @@ __global__ void bicos_kernel(
     if (best_col1 == -1)
         return;
 
-    if constexpr (VARIANT == BICOSVariant::WITH_REVERSE) {
-        int reverse_col0 = bicos_search<TDescriptor, load_datacache>(
-            load_datacache(descr1->row(row) + best_col1),
-            descr0->row(row),
-            out.cols
-        );
+    if constexpr (FLAGS & BICOSFLAGS_CONSISTENCY) {
+        int reverse_col0 =
+            bicos_search<TDescriptor, load_datacache, FLAGS>(
+                load_datacache(descr1->row(row) + best_col1),
+                descr0->row(row),
+                out.cols
+            );
 
         if (reverse_col0 != -1 && abs(col - reverse_col0) <= max_lr_diff)
             out(row, col) = abs((col + reverse_col0) / 2 - best_col1);

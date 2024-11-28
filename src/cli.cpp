@@ -164,8 +164,6 @@ int main(int argc, char const* const* argv) {
         std::cout << "Loaded " << lstack.size() + rstack.size() << " images total\n";
     }
 
-    cv::Mat disp;
-
     // clang-format off
 
     BICOS::Config c {
@@ -201,6 +199,9 @@ int main(int argc, char const* const* argv) {
 
     // clang-format on
 
+    cv::Mat disp;
+    cv::Mat_<float> corrmap;
+
 #ifdef BICOS_CUDA
 
     std::vector<cv::cuda::GpuMat> lstack_gpu, rstack_gpu;
@@ -214,11 +215,11 @@ int main(int argc, char const* const* argv) {
     std::cout << "Latency:\t" << delta_upload << "ms (upload)\t";
     std::cout.flush();
 
-    cv::cuda::GpuMat disp_gpu;
+    cv::cuda::GpuMat disp_gpu, corr_gpu;
 
     tick = std::chrono::high_resolution_clock::now();
 
-    BICOS::match(lstack_gpu, rstack_gpu, disp_gpu, c);
+    BICOS::match(lstack_gpu, rstack_gpu, disp_gpu, c, need_corrmap ? &corr_gpu : nullptr);
 
     DELTA_MS(match);
 
@@ -228,14 +229,13 @@ int main(int argc, char const* const* argv) {
     tick = std::chrono::high_resolution_clock::now();
 
     disp_gpu.download(disp);
+    corr_gpu.download(corrmap);
 
     DELTA_MS(download);
 
     std::cout << delta_download << "ms (download)" << std::endl;
 
 #else
-
-    cv::Mat_<float> corrmap;
 
     auto tick = std::chrono::high_resolution_clock::now();
 

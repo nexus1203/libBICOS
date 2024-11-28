@@ -17,6 +17,7 @@
  */
 
 #include "common.cuh"
+
 #include "impl/cpu/descriptor_transform.hpp"
 #include "impl/cuda/cutil.cuh"
 #include "impl/cuda/descriptor_transform.cuh"

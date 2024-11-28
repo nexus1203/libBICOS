@@ -38,18 +38,11 @@ struct Wider<uint16_t> {
 template<typename T>
 using wider_t = typename Wider<T>::type;
 
-enum class BICOSVariant { 
-    NO_DUPES =    0b01,
-    CONSISTENCY = 0b10
-};
+// clang-format off
 
-inline constexpr BICOSVariant operator|(BICOSVariant a, BICOSVariant b) {
-    return static_cast<BICOSVariant>(static_cast<int>(a) | static_cast<int>(b));
-}
+constexpr int BICOSFLAGS_NODUPES     = (1 << 0),
+              BICOSFLAGS_CONSISTENCY = (1 << 1);
 
-inline constexpr int operator&(BICOSVariant a, BICOSVariant b) {
-    return static_cast<int>(a) & static_cast<int>(b);
-}
-
+// clang-format on
 
 } // namespace BICOS::impl

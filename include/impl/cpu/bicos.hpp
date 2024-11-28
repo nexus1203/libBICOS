@@ -54,7 +54,7 @@ namespace BICOS::impl::cpu {
     // clang-format on
 }
 
-template<typename TDescriptor, bool NODUPES>
+template<typename TDescriptor, int FLAGS>
 int bicos_search(TDescriptor d0, const TDescriptor* row1, size_t cols) {
     int best_col1 = -1, min_cost = INT_MAX, num_duplicate_minima = 0;
 
@@ -67,22 +67,22 @@ int bicos_search(TDescriptor d0, const TDescriptor* row1, size_t cols) {
             min_cost = cost;
             best_col1 = col1;
 
-            if constexpr (NODUPES)
+            if constexpr (FLAGS & BICOSFLAGS_NODUPES)
                 num_duplicate_minima = 0;
 
-        } else if constexpr (NODUPES)
+        } else if constexpr (FLAGS & BICOSFLAGS_NODUPES)
             if (cost == min_cost)
                 num_duplicate_minima++;
     }
 
-    if constexpr (NODUPES)
+    if constexpr (FLAGS & BICOSFLAGS_NODUPES)
         if (0 < num_duplicate_minima)
             return -1;
 
     return best_col1;
 }
 
-template<typename TDescriptor, BICOSVariant VARIANT>
+template<typename TDescriptor, int FLAGS>
 void bicos(
     const std::unique_ptr<StepBuf<TDescriptor>>& desc0,
     const std::unique_ptr<StepBuf<TDescriptor>>& desc1,
@@ -98,14 +98,14 @@ void bicos(
             const TDescriptor *drow0 = desc0->row(row), *drow1 = desc1->row(row);
 
             for (int col0 = 0; col0 < out.cols; ++col0) {
-                int best_col1 = bicos_search<TDescriptor, VARIANT & BICOSVariant::NO_DUPES>(drow0[col0], drow1, out.cols);
+                int best_col1 = bicos_search<TDescriptor, FLAGS>(drow0[col0], drow1, out.cols);
 
                 if (best_col1 == -1)
                     continue;
 
-                if constexpr (VARIANT & BICOSVariant::CONSISTENCY) {
+                if constexpr (FLAGS & BICOSFLAGS_CONSISTENCY) {
                     int reverse_col0 =
-                        bicos_search<TDescriptor, VARIANT & BICOSVariant::NO_DUPES>(drow1[best_col1], drow0, out.cols);
+                        bicos_search<TDescriptor, FLAGS>(drow1[best_col1], drow0, out.cols);
 
                     if (reverse_col0 == -1 || abs(col0 - reverse_col0) > max_lr_diff)
                         continue;

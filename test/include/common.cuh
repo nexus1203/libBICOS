@@ -55,7 +55,7 @@ T randreal(T from, T to) {
 }
 
 template <typename T>
-bool equals(const cv::Mat_<T>& a, const cv::Mat_<T>& b) {
+bool equals_(const cv::Mat_<T>& a, const cv::Mat_<T>& b) {
     for (int row = 0; row < a.rows; ++row) {
         for (int col = 0; col < a.cols; ++col) {
             T va = ((T*)a.ptr(row))[col],
@@ -72,6 +72,24 @@ bool equals(const cv::Mat_<T>& a, const cv::Mat_<T>& b) {
     }
 
     return true;
+}
+
+inline bool
+equals(const cv::Mat& a, const cv::Mat& b) {
+    int type = a.type();
+    if (type != b.type()) {
+        std::cerr << "Unequal datatype\n";
+        return false;
+    }
+
+    switch (type) {
+    case CV_16SC1:
+        return equals_<int16_t>(a, b);
+    case CV_32FC1:
+        return equals_<float>(a, b);
+    }
+
+    throw std::runtime_error("unimplemented");
 }
 
 template<typename T>

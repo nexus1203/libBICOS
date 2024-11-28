@@ -77,24 +77,24 @@ int main(void) {
     double thresh = randreal(-0.9, 0.9);
     double minvar = randreal(0.0, 75.0);
 
-    cv::cuda::GpuMat devout(randsize, cv::DataType<disparity_t>::type);
-    devout.setTo(INVALID_DISP);
-    cv::Mat_<disparity_t> hostout(randsize), devout_host;
-
 #if TEST_SUBPIXEL
 
-    auto kernel = cuda::agree_subpixel_kernel<INPUT_TYPE, double, cuda::NXCVariant::MINVAR>;
+    cv::cuda::GpuMat devout(randsize, cv::DataType<float>::type);
+    devout.setTo(INVALID_DISP<float>);
+    cv::Mat_<float> hostout(randsize), devout_host;
+
+    auto kernel = cuda::agree_subpixel_kernel<INPUT_TYPE, double, cuda::NXCVariant::MINVAR, false>;
 
     block = cuda::max_blocksize(kernel);
     grid = create_grid(block, randsize);
 
     float step = 0.25f;
 
-    kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout);
+    kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout, cv::cuda::PtrStepSz<double>());
 
     assertCudaSuccess(cudaGetLastError());
 
-    cpu::agree_subpixel<INPUT_TYPE>(randdisp, hinput_l, hinput_r, n, thresh, step, minvar, hostout);
+    cpu::agree_subpixel<INPUT_TYPE>(randdisp, hinput_l, hinput_r, n, thresh, step, minvar, hostout, nullptr);
 
     assertCudaSuccess(cudaDeviceSynchronize());
 
@@ -113,22 +113,24 @@ int main(void) {
 
 #else
 
-    auto kernel = cuda::agree_kernel<INPUT_TYPE, double, cuda::NXCVariant::MINVAR>;
+    cv::Mat_<int16_t> devout_host;
+
+    auto kernel = cuda::agree_kernel<INPUT_TYPE, double, cuda::NXCVariant::MINVAR, false>;
 
     block = cuda::max_blocksize(kernel);
     grid = create_grid(block, randsize);
 
-    kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, 0.0f, minvar, devout);
+    kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, minvar, cv::cuda::PtrStepSz<double>());
 
     assertCudaSuccess(cudaGetLastError());
 
-    cpu::agree<INPUT_TYPE>(randdisp, hinput_l, hinput_r, n, thresh, minvar, hostout);
+    cpu::agree<INPUT_TYPE>(randdisp, hinput_l, hinput_r, n, thresh, minvar, nullptr);
 
     assertCudaSuccess(cudaDeviceSynchronize());
 
-    devout.download(devout_host);
+    randdisp_dev.download(devout_host);
 
-    if (!equals(hostout, devout_host))
+    if (!equals(randdisp, devout_host))
         return 1;
 
     return 0;

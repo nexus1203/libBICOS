@@ -80,10 +80,6 @@ void bench_agree_kernel(benchmark::State& state) {
     cv::setRNGSeed(seed);
     const int n = 10;
 
-    cv::Mat_<int16_t> randdisp(size);
-    cv::randu(randdisp, -1, size.width);
-    cv::cuda::GpuMat randdisp_dev(randdisp);
-
     std::vector<cv::cuda::GpuMat> _devinput;
     std::vector<cv::cuda::PtrStepSz<TInput>> devinput;
 
@@ -99,14 +95,25 @@ void bench_agree_kernel(benchmark::State& state) {
 
     cuda::RegisteredPtr devptr(devinput.data(), 2 * n, true);
 
-    cv::cuda::GpuMat out(size, cv::DataType<disparity_t>::type);
+    cv::cuda::GpuMat out(size, cv::DataType<int16_t>::type);
 
-    const dim3 block = cuda::max_blocksize(cuda::agree_kernel<TInput, double, cuda::NXCVariant::MINVAR>);
+    const dim3 block = cuda::max_blocksize(cuda::agree_kernel<TInput, double, cuda::NXCVariant::MINVAR, false>);
     const dim3 grid = create_grid(block, size);
 
+    cv::Mat_<int16_t> randdisp(size);
+    cv::cuda::GpuMat randdisp_dev;
+
     for (auto _: state) {
-        cuda::agree_kernel<TInput, double, cuda::NXCVariant::MINVAR>
-            <<<grid, block>>>(randdisp_dev, devptr, n, thresh, 0.0, minvar, out);
+
+        state.PauseTiming();
+
+        cv::randu(randdisp, -1, size.width);
+        randdisp_dev.upload(randdisp);
+
+        state.ResumeTiming();
+
+        cuda::agree_kernel<TInput, double, cuda::NXCVariant::MINVAR, false>
+            <<<grid, block>>>(randdisp_dev, devptr, n, thresh, minvar);
         cudaDeviceSynchronize();
     }
 
@@ -137,13 +144,13 @@ void bench_agree_subpixel_kernel(benchmark::State& state) {
 
     cuda::RegisteredPtr devptr(devinput.data(), 2 * n, true);
 
-    cv::cuda::GpuMat out(size, cv::DataType<disparity_t>::type);
+    cv::cuda::GpuMat out(size, cv::DataType<float>::type);
 
-    const dim3 block = cuda::max_blocksize(cuda::agree_subpixel_kernel<TInput, double, cuda::NXCVariant::MINVAR>);
+    const dim3 block = cuda::max_blocksize(cuda::agree_subpixel_kernel<TInput, double, cuda::NXCVariant::MINVAR, false>);
     const dim3 grid = create_grid(block, size);
 
     for (auto _: state) {
-        cuda::agree_subpixel_kernel<TInput, double, cuda::NXCVariant::MINVAR>
+        cuda::agree_subpixel_kernel<TInput, double, cuda::NXCVariant::MINVAR, false>
             <<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, out);
         cudaDeviceSynchronize();
     }
@@ -175,12 +182,12 @@ void bench_agree_subpixel_kernel_smem(benchmark::State& state) {
 
     cuda::RegisteredPtr devptr(devinput.data(), 2 * n, true);
 
-    cv::cuda::GpuMat out(size, cv::DataType<disparity_t>::type);
+    cv::cuda::GpuMat out(size, cv::DataType<float>::type);
 
     size_t smem_size = size.width * n * sizeof(TInput);
 
     bool smem_fits = cudaSuccess == cudaFuncSetAttribute(
-        cuda::agree_subpixel_kernel_smem<TInput, double, cuda::NXCVariant::MINVAR>,
+        cuda::agree_subpixel_kernel_smem<TInput, double, cuda::NXCVariant::MINVAR, false>,
         cudaFuncAttributeMaxDynamicSharedMemorySize,
         smem_size
     );
@@ -191,11 +198,11 @@ void bench_agree_subpixel_kernel_smem(benchmark::State& state) {
         return;
     }
 
-    const dim3 block = cuda::max_blocksize(cuda::agree_subpixel_kernel_smem<TInput, double, cuda::NXCVariant::MINVAR>, smem_size);
+    const dim3 block = cuda::max_blocksize(cuda::agree_subpixel_kernel_smem<TInput, double, cuda::NXCVariant::MINVAR, false>, smem_size);
     const dim3 grid = create_grid(block, size);
 
     for (auto _: state) {
-        cuda::agree_subpixel_kernel_smem<TInput, double, cuda::NXCVariant::MINVAR>
+        cuda::agree_subpixel_kernel_smem<TInput, double, cuda::NXCVariant::MINVAR, false>
             <<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, minvar, out);
         cudaDeviceSynchronize();
     }
@@ -213,7 +220,7 @@ void randomize_seeded(cpu::StepBuf<T>& sb) {
     std::generate(p, p + sb.size().area(), ibe);
 }
 
-template<typename TDescriptor, BICOSVariant VARIANT>
+template<typename TDescriptor, int FLAGS>
 void bench_bicos_kernel(benchmark::State& state) {
     cv::setRNGSeed(seed);
 
@@ -228,18 +235,18 @@ void bench_bicos_kernel(benchmark::State& state) {
 
     cv::cuda::GpuMat out(size, cv::DataType<int16_t>::type);
 
-    const dim3 block = cuda::max_blocksize(cuda::bicos_kernel<TDescriptor, VARIANT>);
+    const dim3 block = cuda::max_blocksize(cuda::bicos_kernel<TDescriptor, FLAGS>);
     const dim3 grid = create_grid(block, size);
 
     for (auto _: state) {
-        cuda::bicos_kernel<TDescriptor, VARIANT><<<grid, block>>>(lptr, rptr, 3, out);
+        cuda::bicos_kernel<TDescriptor, FLAGS><<<grid, block>>>(lptr, rptr, 3, out);
         cudaDeviceSynchronize();
     }
 
     assertCudaSuccess(cudaGetLastError());
 }
 
-template<typename TDescriptor, BICOSVariant VARIANT>
+template<typename TDescriptor, int FLAGS>
 void bench_bicos_kernel_smem(benchmark::State& state) {
     cv::setRNGSeed(seed);
 
@@ -257,7 +264,7 @@ void bench_bicos_kernel_smem(benchmark::State& state) {
     size_t smem_size = size.width * sizeof(TDescriptor);
 
     bool smem_fits = cudaSuccess == cudaFuncSetAttribute(
-        cuda::bicos_kernel_smem<TDescriptor, VARIANT>,
+        cuda::bicos_kernel_smem<TDescriptor, FLAGS>,
         cudaFuncAttributeMaxDynamicSharedMemorySize,
         smem_size
     );
@@ -268,11 +275,11 @@ void bench_bicos_kernel_smem(benchmark::State& state) {
         return;
     }
 
-    const dim3 block = cuda::max_blocksize(cuda::bicos_kernel_smem<TDescriptor, VARIANT>, smem_size);
+    const dim3 block = cuda::max_blocksize(cuda::bicos_kernel_smem<TDescriptor, FLAGS>, smem_size);
     const dim3 grid = create_grid(block, size);
 
     for (auto _: state) {
-        cuda::bicos_kernel_smem<TDescriptor, VARIANT><<<grid, block, smem_size>>>(lptr, rptr, 3, out);
+        cuda::bicos_kernel_smem<TDescriptor, FLAGS><<<grid, block, smem_size>>>(lptr, rptr, 3, out);
         cudaDeviceSynchronize();
     }
 
@@ -334,15 +341,15 @@ void bench_integration(benchmark::State& state) {
     ldev.resize(n);
     rdev.resize(n);
 
-    Config c { .nxcorr_thresh = thresh,
+    Config c { .nxcorr_threshold = thresh,
                .subpixel_step = step == 0.0f ? std::nullopt : std::optional(step),
                .mode = TransformMode::LIMITED };
 
     cv::cuda::GpuMat out;
-    out.create(ldev.front().size(), cv::DataType<disparity_t>::type);
+    out.create(ldev.front().size(), step == 0.0f ? CV_16SC1 : CV_32FC1);
 
     for (auto _: state) {
-        cuda::match(ldev, rdev, out, c, cv::cuda::Stream::Null());
+        cuda::match(ldev, rdev, out, c, nullptr, cv::cuda::Stream::Null());
         cudaDeviceSynchronize();
     }
 }
@@ -368,22 +375,30 @@ BENCHMARK(bench_agree_subpixel_kernel<uint16_t>);
 BENCHMARK(bench_agree_subpixel_kernel_smem<uint8_t>);
 BENCHMARK(bench_agree_subpixel_kernel_smem<uint16_t>);
 
-BENCHMARK(bench_bicos_kernel<uint32_t, BICOSVariant::DEFAULT>);
-BENCHMARK(bench_bicos_kernel_smem<uint32_t, BICOSVariant::DEFAULT>);
-BENCHMARK(bench_bicos_kernel<uint64_t, BICOSVariant::DEFAULT>);
-BENCHMARK(bench_bicos_kernel_smem<uint64_t, BICOSVariant::DEFAULT>);
+BENCHMARK(bench_bicos_kernel<uint32_t, BICOSFLAGS_NODUPES>);
+BENCHMARK(bench_bicos_kernel_smem<uint32_t, BICOSFLAGS_NODUPES>);
+BENCHMARK(bench_bicos_kernel<uint64_t, BICOSFLAGS_NODUPES>);
+BENCHMARK(bench_bicos_kernel_smem<uint64_t, BICOSFLAGS_NODUPES>);
 
-BENCHMARK(bench_bicos_kernel<uint32_t, BICOSVariant::WITH_REVERSE>);
-BENCHMARK(bench_bicos_kernel_smem<uint32_t, BICOSVariant::WITH_REVERSE>);
-BENCHMARK(bench_bicos_kernel<uint64_t, BICOSVariant::WITH_REVERSE>);
-BENCHMARK(bench_bicos_kernel_smem<uint64_t, BICOSVariant::WITH_REVERSE>);
+BENCHMARK(bench_bicos_kernel<uint32_t, BICOSFLAGS_CONSISTENCY>);
+BENCHMARK(bench_bicos_kernel_smem<uint32_t, BICOSFLAGS_CONSISTENCY>);
+BENCHMARK(bench_bicos_kernel<uint64_t, BICOSFLAGS_CONSISTENCY>);
+BENCHMARK(bench_bicos_kernel_smem<uint64_t, BICOSFLAGS_CONSISTENCY>);
+
+BENCHMARK(bench_bicos_kernel<uint32_t, BICOSFLAGS_NODUPES | BICOSFLAGS_CONSISTENCY>);
+BENCHMARK(bench_bicos_kernel_smem<uint32_t, BICOSFLAGS_NODUPES | BICOSFLAGS_CONSISTENCY>);
+BENCHMARK(bench_bicos_kernel<uint64_t, BICOSFLAGS_NODUPES | BICOSFLAGS_CONSISTENCY>);
+BENCHMARK(bench_bicos_kernel_smem<uint64_t, BICOSFLAGS_NODUPES | BICOSFLAGS_CONSISTENCY>);
 
 #ifdef BICOS_CUDA_HAS_UINT128
-BENCHMARK(bench_bicos_kernel<uint128_t, BICOSVariant::DEFAULT>);
-BENCHMARK(bench_bicos_kernel_smem<uint128_t, BICOSVariant::DEFAULT>);
+BENCHMARK(bench_bicos_kernel<uint128_t, BICOSFLAGS_NODUPES>);
+BENCHMARK(bench_bicos_kernel_smem<uint128_t, BICOSFLAGS_NODUPES>);
 
-BENCHMARK(bench_bicos_kernel<uint128_t, BICOSVariant::WITH_REVERSE>);
-BENCHMARK(bench_bicos_kernel_smem<uint128_t, BICOSVariant::WITH_REVERSE>);
+BENCHMARK(bench_bicos_kernel<uint128_t, BICOSFLAGS_CONSISTENCY>);
+BENCHMARK(bench_bicos_kernel_smem<uint128_t, BICOSFLAGS_CONSISTENCY>);
+
+BENCHMARK(bench_bicos_kernel<uint128_t, BICOSFLAGS_NODUPES | BICOSFLAGS_CONSISTENCY>);
+BENCHMARK(bench_bicos_kernel_smem<uint128_t, BICOSFLAGS_NODUPES | BICOSFLAGS_CONSISTENCY>);
 #endif
 
 BENCHMARK(bench_descriptor_transform_kernel<uint8_t, uint32_t, TransformMode::LIMITED>);

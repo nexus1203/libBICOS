@@ -58,42 +58,46 @@ int main(void) {
     double thresh = randreal(-0.9, 0.9);
     double minvar = randreal(0.1, 10.0);
 
-    cv::cuda::GpuMat devout_gmem(randsize, cv::DataType<disparity_t>::type),
-        devout_smem(randsize, cv::DataType<disparity_t>::type);
+    cv::cuda::GpuMat devout_gmem(randsize, cv::DataType<float>::type),
+        devout_smem(randsize, cv::DataType<float>::type);
 
-    devout_gmem.setTo(INVALID_DISP);
-    devout_smem.setTo(INVALID_DISP);
+    devout_gmem.setTo(INVALID_DISP<float>);
+    devout_smem.setTo(INVALID_DISP<float>);
 
     size_t smem_size = randsize.width * n * sizeof(INPUT_TYPE);
 
     float step = 0.25f;
 
-    auto kernel = cuda::agree_subpixel_kernel<INPUT_TYPE, double, cuda::NXCVariant::MINVAR>;
+    {
+        auto kernel = cuda::agree_subpixel_kernel<INPUT_TYPE, double, cuda::NXCVariant::MINVAR, false>;
 
-    block = cuda::max_blocksize(kernel);
-    grid = create_grid(block, randsize);
+        block = cuda::max_blocksize(kernel);
+        grid = create_grid(block, randsize);
 
-    kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout_gmem);
-    assertCudaSuccess(cudaGetLastError());
+        kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout_gmem, cv::cuda::PtrStepSz<double>());
+        assertCudaSuccess(cudaGetLastError());
+    }
 
-    kernel = cuda::agree_subpixel_kernel_smem<INPUT_TYPE, double, cuda::NXCVariant::MINVAR>;
+    {
+        auto smem_kernel = cuda::agree_subpixel_kernel_smem<INPUT_TYPE, double, cuda::NXCVariant::MINVAR, false>;
 
-    bool smem_fits = cudaSuccess == cudaFuncSetAttribute(
-        kernel,
-        cudaFuncAttributeMaxDynamicSharedMemorySize,
-        smem_size
-    );
+        bool smem_fits = cudaSuccess == cudaFuncSetAttribute(
+            smem_kernel,
+            cudaFuncAttributeMaxDynamicSharedMemorySize,
+            smem_size
+        );
 
-    if (!smem_fits)
-        return EXIT_TEST_SKIP;
+        if (!smem_fits)
+            return EXIT_TEST_SKIP;
 
-    block = cuda::max_blocksize(kernel);
-    grid = create_grid(block, randsize);
+        block = cuda::max_blocksize(smem_kernel);
+        grid = create_grid(block, randsize);
 
-    kernel<<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout_smem);
-    assertCudaSuccess(cudaGetLastError());
+        smem_kernel<<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout_smem, cv::cuda::PtrStepSz<double>());
+        assertCudaSuccess(cudaGetLastError());
+    }
 
-    cv::Mat_<disparity_t> gmem, smem;
+    cv::Mat_<float> gmem, smem;
     devout_gmem.download(gmem);
     devout_smem.download(smem);
 
