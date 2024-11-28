@@ -125,8 +125,15 @@ static void match_impl(
 
     /* bicos disparity */
 
-    cv::cuda::GpuMat bicos_disp(sz, cv::DataType<int16_t>::type);
-    bicos_disp.setTo(INVALID_DISP<int16_t>, _stream);
+    cv::cuda::GpuMat bicos_disp;
+    if (out.type() == cv::DataType<int16_t>::type) {
+        // input buffer is probably output from previous,
+        // non-subpixel call to match()
+        // we can reuse that
+        bicos_disp = out;
+    }
+
+    init_disparity<int16_t>(bicos_disp, sz, _stream);
 
     auto kernel = select_bicos_kernel<TDescriptor>(variant, true);
     int lr_max_diff = std::holds_alternative<Variant::Consistency>(variant)
@@ -182,6 +189,7 @@ static void match_impl(
     };
 
     if (subpixel_step.has_value()) {
+        init_disparity<float>(out, sz);
         if (corrmap) {
             if (min_var.has_value()) {
                 if (precision == Precision::SINGLE)
@@ -208,6 +216,7 @@ static void match_impl(
             }
         }
     } else {
+        // working on bicos_disp
         if (corrmap) {
             if (min_var.has_value()) {
                 if (precision == Precision::SINGLE)
