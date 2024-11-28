@@ -193,9 +193,9 @@ static void match_impl(
         if (corrmap) {
             if (min_var.has_value()) {
                 if (precision == Precision::SINGLE)
-                    invoke(agree_subpixel_kernel<TInput, float, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), subpixel_step.value(), out, *corrmap);
+                    invoke(agree_subpixel_kernel<TInput, float, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, subpixel_step.value(), out, *corrmap);
                 else
-                    invoke(agree_subpixel_kernel<TInput, double, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), subpixel_step.value(), out, *corrmap);
+                    invoke(agree_subpixel_kernel<TInput, double, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, subpixel_step.value(), out, *corrmap);
             } else {
                 if (precision == Precision::SINGLE)
                     invoke(agree_subpixel_kernel<TInput, float, NXCVariant::PLAIN, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0f, subpixel_step.value(), out, *corrmap);
@@ -205,9 +205,9 @@ static void match_impl(
         } else {
             if (min_var.has_value()) {
                 if (precision == Precision::SINGLE)
-                    invoke(agree_subpixel_kernel<TInput, float, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), subpixel_step.value(), out, cv::cuda::PtrStepSz<float>());
+                    invoke(agree_subpixel_kernel<TInput, float, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, subpixel_step.value(), out, cv::cuda::PtrStepSz<float>());
                 else
-                    invoke(agree_subpixel_kernel<TInput, double, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), subpixel_step.value(), out, cv::cuda::PtrStepSz<double>());
+                    invoke(agree_subpixel_kernel<TInput, double, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, subpixel_step.value(), out, cv::cuda::PtrStepSz<double>());
             } else {
                 if (precision == Precision::SINGLE)
                     invoke(agree_subpixel_kernel<TInput, float, NXCVariant::PLAIN, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0f, subpixel_step.value(), out, cv::cuda::PtrStepSz<float>());
@@ -220,9 +220,9 @@ static void match_impl(
         if (corrmap) {
             if (min_var.has_value()) {
                 if (precision == Precision::SINGLE)
-                    invoke(agree_kernel<TInput, float, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), *corrmap);
+                    invoke(agree_kernel<TInput, float, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, *corrmap);
                 else
-                    invoke(agree_kernel<TInput, double, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), *corrmap);
+                    invoke(agree_kernel<TInput, double, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, *corrmap);
             } else {
                 if (precision == Precision::SINGLE)
                     invoke(agree_kernel<TInput, float, NXCVariant::PLAIN, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0f, *corrmap);
@@ -232,9 +232,9 @@ static void match_impl(
         } else {
             if (min_var.has_value()) {
                 if (precision == Precision::SINGLE)
-                    invoke(agree_kernel<TInput, float, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), cv::cuda::PtrStepSz<float>());
+                    invoke(agree_kernel<TInput, float, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, cv::cuda::PtrStepSz<float>());
                 else
-                    invoke(agree_kernel<TInput, double, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value(), cv::cuda::PtrStepSz<double>());
+                    invoke(agree_kernel<TInput, double, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, cv::cuda::PtrStepSz<double>());
             } else {
                 if (precision == Precision::SINGLE)
                     invoke(agree_kernel<TInput, float, NXCVariant::PLAIN, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0f, cv::cuda::PtrStepSz<float>());
