@@ -229,7 +229,8 @@ int main(int argc, char const* const* argv) {
     tick = std::chrono::high_resolution_clock::now();
 
     disp_gpu.download(disp);
-    corr_gpu.download(corrmap);
+    if (need_corrmap)
+        corr_gpu.download(corrmap);
 
     DELTA_MS(download);
 
