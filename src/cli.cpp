@@ -18,6 +18,7 @@
 
 #include "common.hpp"
 
+#include <unistd.h>
 #include <chrono>
 #include <filesystem>
 #include <iostream>
