@@ -24,6 +24,14 @@
     #include <format>
 #endif
 
+#if __cplusplus >= 202002L // c++20
+    #define UNLIKELY [[unlikely]]
+    #define LIKELY [[likely]]
+#else
+    #define UNLIKELY
+    #define LIKELY
+#endif
+
 namespace BICOS {
 
 #ifdef BICOS_FMT_FALLBACK

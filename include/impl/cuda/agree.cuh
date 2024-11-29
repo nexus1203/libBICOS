@@ -20,9 +20,9 @@
 
 #include "common.hpp"
 #include "cutil.cuh"
+#include "compat.hpp"
 
 #include <opencv2/core/cuda/common.hpp>
-#include <cuda_bf16.h>
 
 namespace BICOS::impl::cuda {
 
@@ -109,7 +109,7 @@ __global__ void agree_kernel(
 
     const int col1 = col - d;
 
-    if (col1 < 0 || raw_disp.cols <= col1) {
+    if (col1 < 0 || raw_disp.cols <= col1) UNLIKELY {
         d = INVALID_DISP<int16_t>;
         return;
     }
@@ -166,7 +166,7 @@ __global__ void agree_subpixel_kernel(
 
     const int col1 = col - d;
 
-    if (col1 < 0 || out.cols <= col1)
+    if (col1 < 0 || out.cols <= col1) UNLIKELY
         return;
 
     TInput pix0[PIX_STACKSIZE], pix1[PIX_STACKSIZE];
@@ -186,7 +186,7 @@ __global__ void agree_subpixel_kernel(
 
     TPrecision nxc;
 
-    if (col1 == 0 || col1 == out.cols - 1) {
+    if (col1 == 0 || col1 == out.cols - 1) UNLIKELY {
         if constexpr (std::is_same_v<TPrecision, float>)
             nxc = nxcorrf<VARIANT>(pix0, pix1, n, min_var);
         else
@@ -284,7 +284,7 @@ __global__ void agree_subpixel_kernel_smem(
 
     const int col1 = col - d;
 
-    if (col1 < 0 || out.cols <= col1)
+    if (col1 < 0 || out.cols <= col1) UNLIKELY
         return;
 
     TInput pix0[PIX_STACKSIZE];
@@ -298,7 +298,7 @@ __global__ void agree_subpixel_kernel_smem(
 
     TPrecision nxc;
 
-    if (col1 == 0 || col1 == out.cols - 1) {
+    if (col1 == 0 || col1 == out.cols - 1) UNLIKELY {
         if constexpr (std::is_same_v<TPrecision, float>)
             nxc = nxcorrf<VARIANT>(pix0, row1 + n * col1, n, min_var);
         else

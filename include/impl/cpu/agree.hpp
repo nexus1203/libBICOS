@@ -19,6 +19,7 @@
 #pragma once
 
 #include "common.hpp"
+#include "compat.hpp"
 
 namespace BICOS::impl::cpu {
 
@@ -71,7 +72,7 @@ static void agree(
 
                 const int idx1 = col - d;
 
-                if (idx1 < 0 || sz.width <= idx1) {
+                if (idx1 < 0 || sz.width <= idx1) UNLIKELY {
                     d = INVALID_DISP<int16_t>;
                     continue;
                 }
@@ -119,10 +120,10 @@ static void agree_subpixel(
 
                 const int col1 = col - d;
 
-                if (col1 < 0 || sz.width <= col1)
+                if (col1 < 0 || sz.width <= col1) UNLIKELY
                     continue;
 
-                if (col1 == 0 || col1 == sz.width - 1) {
+                if (col1 == 0 || col1 == sz.width - 1) UNLIKELY {
                     float nxc = nxcorr(
                         stack0.ptr<TInput>(row, col),
                         stack1.ptr<TInput>(row, col1),
