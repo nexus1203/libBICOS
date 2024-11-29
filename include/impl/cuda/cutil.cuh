@@ -26,7 +26,11 @@
 
 #include "common.hpp"
 
-#define PIX_STACKSIZE 33
+#ifdef BICOS_CUDA_HAS_UINT128
+    #define PIX_STACKSIZE 33
+#else
+    #define PIX_STACKSIZE 17
+#endif
 
 namespace BICOS::impl::cuda {
 
