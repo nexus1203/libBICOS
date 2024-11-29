@@ -32,7 +32,7 @@ void save_image(const cv::Mat& image, std::filesystem::path outfile, cv::Colorma
     cv::Mat normalized, colorized;
     cv::MatExpr mask;
 
-    if (image.type() == CV_32FC1)
+    if (image.type() == CV_32FC1 || image.type() == CV_64FC1)
         mask = image != image;
     else
         mask = image == -1;

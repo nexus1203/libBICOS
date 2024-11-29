@@ -168,7 +168,7 @@ int main(int argc, char const* const* argv) {
     // clang-format on
 
     cv::Mat disp;
-    cv::Mat_<float> corrmap;
+    cv::Mat corrmap;
 
 #ifdef BICOS_CUDA
 
