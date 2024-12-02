@@ -131,7 +131,7 @@ __global__ void bicos_kernel_smem(
         );
 
         if (reverse_col0 != -1 && abs(col - reverse_col0) <= max_lr_diff)
-            out(row, col) = abs((col + reverse_col0) / 2 - best_col1);
+            out(row, col) = abs(__hadd(col, reverse_col0) - best_col1);
 
     } else {
         if (best_col1 != -1)
