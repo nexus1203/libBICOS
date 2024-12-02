@@ -62,7 +62,7 @@ using SearchVariant = std::variant<Variant::NoDuplicates, Variant::Consistency>;
 struct Config {
     std::optional<float> nxcorr_threshold = 0.5f;
     std::optional<float> subpixel_step = std::nullopt;
-    std::optional<float> min_variance  = std::nullopt;
+    std::optional<float> min_variance = std::nullopt;
     TransformMode mode = TransformMode::LIMITED;
 #if defined(BICOS_CUDA)
     Precision precision = Precision::SINGLE;

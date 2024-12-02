@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "bitfield.hpp"
+#include "bitfield.cuh"
 #include "impl/common.hpp"
 #include "stepbuf.hpp"
 
@@ -38,7 +38,7 @@ __global__ void transform_full_kernel(
         return;
 
     TInput pix[PIX_STACKSIZE];
-    Bitfield<TDescriptor> bf;
+    Bitfield_t<TDescriptor> bf;
     ssize_t n = (ssize_t)_n;
 
     float av = 0.0f;
@@ -104,7 +104,7 @@ __global__ void transform_limited_kernel(
         return;
 
     TInput pix[PIX_STACKSIZE];
-    Bitfield<TDescriptor> bf;
+    Bitfield_t<TDescriptor> bf;
 
     float av = 0.0f;
     for (size_t i = 0; i < n; ++i) {

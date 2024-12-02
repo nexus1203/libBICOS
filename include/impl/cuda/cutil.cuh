@@ -24,6 +24,7 @@
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/core/cuda/common.hpp>
 
+#include "bitfield.cuh"
 #include "common.hpp"
 
 #ifdef BICOS_CUDA_HAS_UINT128
@@ -116,6 +117,18 @@ __device__ __forceinline__ __uint128_t load_datacache<__uint128_t>(const __uint1
     return (__uint128_t(__ldg(p + 1)) << 64) | __uint128_t(__ldg(p));
 }
 #endif
+
+template<size_t N>
+__device__ __forceinline__ varuint_<N> load_datacache(const varuint_<N>* _p) {
+    varuint_<N> ret;
+    auto p = reinterpret_cast<const uint32_t*>(_p);
+
+#pragma unroll
+    for (size_t i = 0; i < ret.size; ++i)
+        ret.words[i] = __ldg(p + i);
+
+    return ret;
+}
 
 template<typename T>
 __device__ __forceinline__ T load_deref(const T* p) {

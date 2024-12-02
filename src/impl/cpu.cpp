@@ -21,6 +21,7 @@
 
 #include <limits>
 #include <variant>
+#include <bitset>
 
 #include "cpu.hpp"
 
@@ -33,7 +34,7 @@
 
 namespace BICOS::impl::cpu {
 
-template <typename TInput, typename TDescriptor>
+template<typename TInput, typename TDescriptor>
 static void match_impl(
     const cv::Mat& stack0,
     const cv::Mat& stack1,
@@ -45,7 +46,7 @@ static void match_impl(
     cv::Size sz,
     size_t n,
     cv::Mat& out,
-    cv::Mat *corrmap
+    cv::Mat* corrmap
 ) {
     std::unique_ptr<StepBuf<TDescriptor>> desc0, desc1;
     switch (mode) {
@@ -63,6 +64,8 @@ static void match_impl(
     // write directly to out, which ideally, is int16_t.
     // only allocate a new buffer if we need floating point,
     // which is in case of subpixel interpolation
+
+    // clang-format off
 
     if (std::holds_alternative<Variant::Consistency>(variant)) {
         Variant::Consistency consistency = std::get<Variant::Consistency>(variant);
@@ -86,6 +89,8 @@ static void match_impl(
         } else
             agree<TInput>(out, stack0, stack1, n, min_nxc.value(), min_var, corrmap);
     }
+
+    // clang-format on
 }
 
 void match(
@@ -93,7 +98,7 @@ void match(
     const std::vector<cv::Mat>& _stack1,
     cv::Mat& disparity,
     Config cfg,
-    cv::Mat *corrmap
+    cv::Mat* corrmap
 ) {
     const size_t n = _stack0.size();
     const int depth = _stack0.front().depth();
@@ -135,6 +140,12 @@ void match(
                 match_impl<uint8_t, uint128_t>(stack0, stack1, cfg.nxcorr_threshold, cfg.subpixel_step, min_var, cfg.variant, cfg.mode, size, n, disparity, corrmap);
             else
                 match_impl<uint16_t, uint128_t>(stack0, stack1, cfg.nxcorr_threshold, cfg.subpixel_step, min_var, cfg.variant, cfg.mode, size, n, disparity, corrmap);
+            break;
+        case 129 ... 256:
+            if (depth == CV_8U)
+                match_impl<uint8_t, std::bitset<256>>(stack0, stack1, cfg.nxcorr_threshold, cfg.subpixel_step, min_var, cfg.variant, cfg.mode, size, n, disparity, corrmap);
+            else
+                match_impl<uint16_t, std::bitset<256>>(stack0, stack1, cfg.nxcorr_threshold, cfg.subpixel_step, min_var, cfg.variant, cfg.mode, size, n, disparity, corrmap);
             break;
         default:
             throw std::invalid_argument(BICOS::format("input stacks too large, would require {} bits", required_bits));

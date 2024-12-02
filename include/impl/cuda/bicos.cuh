@@ -19,6 +19,7 @@
 #pragma once
 
 #include "common.hpp"
+#include "bitfield.cuh"
 #include "impl/common.hpp"
 #include "stepbuf.hpp"
 
@@ -40,6 +41,11 @@ static __device__ __forceinline__ int ham(uint128_t a, uint128_t b) {
     return lo + hi;
 }
 #endif
+
+template<size_t NBits>
+static __device__ __forceinline__ int ham(const varuint_<NBits> &a, const varuint_<NBits> &b) {
+    return a.hamming(b);
+}
 
 template<typename TDescriptor, TDescriptor (*FLoad)(const TDescriptor*), int FLAGS>
 static __device__ __forceinline__ int

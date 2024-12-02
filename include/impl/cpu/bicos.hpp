@@ -19,8 +19,11 @@
 #pragma once
 
 #include "common.hpp"
-#include "impl/common.hpp"
 #include "stepbuf.hpp"
+
+#include <bitset>
+
+#include "impl/common.hpp"
 
 #ifdef BICOS_POPCNT_FALLBACK
 inline int popcount(uint32_t x) {
@@ -52,6 +55,11 @@ namespace BICOS::impl::cpu {
          + popcount((uint64_t)(diff >> 64));
 
     // clang-format on
+}
+
+template<size_t N>
+[[maybe_unused]] static int ham(std::bitset<N> a, std::bitset<N> b) {
+    return (a ^ b).count();
 }
 
 template<typename TDescriptor, int FLAGS>

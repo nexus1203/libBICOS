@@ -288,7 +288,16 @@ void match(
             else
                 match_impl<uint16_t, uint128_t>(_stack0, _stack1, n, sz, cfg.nxcorr_threshold, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, cfg.variant, disparity, corrmap, stream);
             break;
+        case 129 ... 256:
+#else
+        case 65 ... 256:
 #endif
+            if (depth == CV_8U)
+                match_impl<uint8_t, varuint_<256>>(_stack0, _stack1, n, sz, cfg.nxcorr_threshold, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, cfg.variant, disparity, corrmap, stream);
+            else
+                match_impl<uint16_t, varuint_<256>>(_stack0, _stack1, n, sz, cfg.nxcorr_threshold, cfg.precision, cfg.mode, cfg.subpixel_step, cfg.min_variance, cfg.variant, disparity, corrmap, stream);
+            break;
+            break;
         default:
             throw std::invalid_argument(BICOS::format("input stacks too large, would require {} bits", required_bits));
     }

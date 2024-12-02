@@ -18,33 +18,41 @@
 
 #pragma once
 
-#ifdef __CUDACC__
-    #define BITFIELD_LOCATION __device__ __forceinline__
-#else
-    #define BITFIELD_LOCATION
-#endif
+#include <bitset>
+#include <type_traits>
 
-namespace BICOS::impl {
+namespace BICOS::impl::cpu {
+
+template<typename T>
+struct is_bitset: std::false_type {};
+
+template<size_t N>
+struct is_bitset<std::bitset<N>>: std::true_type {};
 
 template<typename T>
 struct Bitfield {
     unsigned int i = 0u;
     T v = T(0);
 
-    BITFIELD_LOCATION void set(bool value) {
+    void set(bool value) {
 #ifdef BICOS_DEBUG
-        if (sizeof(T) * 8 <= i)
-    #ifdef __CUDACC__
-            __trap();
-    #else
-            throw std::overflow_error("Bitfield overflow");
-    #endif
+        if constexpr (is_bitset<T>::value) {
+            if (v.size() <= i)
+                throw std::overflow_error("Bitfield overflow");
+        } else {
+            if (sizeof(T) * 8 <= i)
+                throw std::overflow_error("Bitfield overflow");
+        }
 #endif
-        if (value)
-            v |= T(1) << i;
+        if (value) {
+            if constexpr (is_bitset<T>::value)
+                v.set(i);
+            else
+                v |= T(1) << i;
+        }
 
         i++;
     }
 };
 
-} // namespace BICOS::impl
+} // namespace BICOS::impl::cpu
