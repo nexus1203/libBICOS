@@ -21,32 +21,20 @@
 #include "common.hpp"
 #include "stepbuf.hpp"
 
-#ifdef BICOS_POPCNT_FALLBACK
-inline int popcount(uint32_t x) {
-    return __builtin_popcount(x);
-}
-inline int popcount(uint64_t x) {
-    return __builtin_popcountll(x);
-}
-#else
-    #include <bit>
-using std::popcount;
-#endif
-
 namespace BICOS::impl::cpu {
 
 [[maybe_unused]] static int ham(uint32_t a, uint32_t b) {
-    return popcount(a ^ b);
+    return __builtin_popcount(a ^ b);
 }
 
 [[maybe_unused]] static int ham(uint64_t a, uint64_t b) {
-    return popcount(a ^ b);
+    return __builtin_popcountll(a ^ b);
 }
 
 [[maybe_unused]] static int ham(uint128_t a, uint128_t b) {
     uint128_t diff = a ^ b;
-    return popcount((uint64_t)(diff & 0xFFFFFFFFFFFFFFFFUL))
-         + popcount((uint64_t)(diff >> 64));
+    return __builtin_popcountll((uint64_t)(diff & 0xFFFFFFFFFFFFFFFFUL))
+         + __builtin_popcountll((uint64_t)(diff >> 64));
 }
 
 template<typename TDescriptor>

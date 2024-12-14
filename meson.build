@@ -21,38 +21,16 @@ pkg = import('pkgconfig')
 fs  = import('fs')
 cc  = meson.get_compiler('cpp')
 
-cppver = cc.first_supported_argument('-std=c++20', '-std=c++17')
-if cppver.length() == 0
-    error('At least c++17 is required')
-else
-    cppver = cppver[0].split('=')[-1]
-endif
-
+cppver = 'c++17'
 override_options = [f'cpp_std=@cppver@']
 
 impl = get_option('implementation')
 srcs = files('src/lib.cpp', 'src/exception.cpp')
 incls = include_directories('include')
-deps = [dependency('opencv4')]
-
-has_builtin_format = cc.compiles('''
-    #include <format>
-    std::string fmtcheck() { return std::format("Recent c++ standard, anyone?"); }
-''', name: 'std::format', args: f'-std=@cppver@')
-
-has_builtin_popcount = cc.compiles('''
-    #include <bit>
-    int popcheck() { return std::popcount(69420U); }
-''', name: 'std::popcount', args: f'-std=@cppver@')
-
-if not has_builtin_format
-    deps += dependency('fmt')
-    add_project_arguments('-DBICOS_FMT_FALLBACK', language: ['cpp', 'cuda'])
-endif
-
-if not has_builtin_popcount
-    add_project_arguments('-DBICOS_POPCNT_FALLBACK', language: ['cpp', 'cuda'])
-endif
+deps = [
+    dependency('opencv4'),
+    dependency('fmt')
+]
 
 is_debug = get_option('buildtype') in ['debug', 'debugoptimized']
 if is_debug

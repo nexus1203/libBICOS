@@ -18,15 +18,16 @@
 
 #include "fileutils.hpp"
 #include "common.hpp"
-#include "compat.hpp"
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
 #include <ostream>
 #include <stdexcept>
+
+#include <fmt/core.h>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 namespace BICOS {
 
@@ -156,7 +157,7 @@ void read_sequence(
 
     if (lseq.size() != rseq.size()) {
         throw std::invalid_argument(
-            BICOS::format("Unequal number of images; left: {}, right: {}", lseq.size(), rseq.size())
+            fmt::format("Unequal number of images; left: {}, right: {}", lseq.size(), rseq.size())
         );
     }
 }

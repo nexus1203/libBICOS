@@ -17,9 +17,10 @@
  */
 
 #include "common.hpp"
-#include "compat.hpp"
 
 #include "cpu.hpp"
+
+#include <fmt/core.h>
 
 #include "impl/cpu/agree.hpp"
 #include "impl/cpu/bicos.hpp"
@@ -111,7 +112,7 @@ void match(
                 match_impl<uint16_t, uint128_t>(stack0, stack1, cfg.nxcorr_thresh, cfg.subpixel_step, min_var, cfg.mode, size, n, disparity);
             break;
         default:
-            throw std::invalid_argument(BICOS::format("input stacks too large, would require {} bits", required_bits));
+            throw std::invalid_argument(fmt::format("input stacks too large, would require {} bits", required_bits));
     }
 
     // clang-format on

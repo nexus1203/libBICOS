@@ -18,13 +18,13 @@
 
 #include "common.hpp"
 #include "cuda.hpp"
-#include "compat.hpp"
 
 #include "impl/cuda/agree.cuh"
 #include "impl/cuda/bicos.cuh"
 #include "impl/cuda/cutil.cuh"
 #include "impl/cuda/descriptor_transform.cuh"
 
+#include <fmt/core.h>
 #include <opencv2/core.hpp>
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/core/cuda/common.hpp>
@@ -216,7 +216,7 @@ void match(
             break;
 #endif
         default:
-            throw std::invalid_argument(BICOS::format("input stacks too large, would require {} bits", required_bits));
+            throw std::invalid_argument(fmt::format("input stacks too large, would require {} bits", required_bits));
     }
 
     // clang-format on
