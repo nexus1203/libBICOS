@@ -29,7 +29,7 @@ srcs = files('src/lib.cpp', 'src/exception.cpp')
 incls = include_directories('include')
 deps = [
     dependency('opencv4'),
-    dependency('fmt')
+    dependency('fmt', version: '>=11.0.0')
 ]
 
 is_debug = get_option('buildtype') in ['debug', 'debugoptimized']
