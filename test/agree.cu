@@ -104,7 +104,7 @@ int main(void) {
 
     // TODO investigate why agree_subpixel fails on random input data
 
-    std::cout << "max-err: " << err << std::endl;
+    fmt::println("max-err: {}", err);
     if (err > 2.0) {
         return 1;
     }

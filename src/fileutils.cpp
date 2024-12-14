@@ -64,11 +64,9 @@ void save_pointcloud(
     xyz.flush();
     xyz.close();
 
-    std::cout << "Saved pointcloud in ascii-format to\t" << outfile << '\n';
+    fmt::println("Saved pointcloud in ascii-format to\t{}", outfile.string());
     if (n_nonfinite > 0)
-        std::cout << "Skipped " << n_nonfinite << " points with non-finite fp values\n";
-
-    std::cout.flush();
+        fmt::println("Skipped {} points with non-finite fp values", n_nonfinite);
 }
 
 void save_disparity(const cv::Mat_<BICOS::disparity_t>& disparity, std::filesystem::path outfile) {
@@ -79,14 +77,14 @@ void save_disparity(const cv::Mat_<BICOS::disparity_t>& disparity, std::filesyst
     cv::applyColorMap(normalized, colorized, cv::COLORMAP_TURBO);
 
     if (!cv::imwrite(outfile.replace_extension("png"), colorized))
-        std::cerr << "Could not save to\t" << outfile << std::endl;
+        fmt::println(stderr, "Could not save to\t{}", outfile.string());
     else
-        std::cout << "Saved colorized disparity to\t\t" << outfile << std::endl;
+        fmt::println("Saved colorized disparity to\t\t{}", outfile.string());
 
     if (!cv::imwrite(outfile.replace_extension("tiff"), disparity))
-        std::cerr << "Could not save to\t" << outfile << std::endl;
+        fmt::println(stderr, "Could not save to\t{}", outfile.string());
     else
-        std::cout << "Saved floating-point disparity to\t" << outfile << std::endl;
+        fmt::println(stderr, "Saved floating-point disparity to\t{}", outfile.string());
 }
 
 static void

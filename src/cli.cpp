@@ -73,11 +73,11 @@ int main(int argc, char const* const* argv) {
     // clang-format on
 
     if (args.count("help")) {
-        std::cout << opts.help() << std::endl;
+        fmt::println( opts.help());
         return 0;
     }
 
-    std::cout << LICENSE_HEADER << std::endl;
+    fmt::println(LICENSE_HEADER);
 
     std::filesystem::path folder0 = args["folder0"].as<std::string>();
     std::filesystem::path outfile = args["outfile"].as<std::string>();
@@ -113,7 +113,7 @@ int main(int argc, char const* const* argv) {
         if (lstack.size() != rstack.size())
             throw std::invalid_argument(fmt::format("Left stack: {}, right stack: {} images", lstack.size(), rstack.size()));
 
-        std::cout << "Loaded " << lstack.size() + rstack.size() << " images total\n";
+        fmt::println("Loaded {} images in total", lstack.size() + rstack.size());
     }
 
     cv::Mat_<BICOS::disparity_t> disp;
@@ -145,7 +145,7 @@ int main(int argc, char const* const* argv) {
 
     DELTA_MS(upload);
 
-    std::cout << "Latency:\t" << delta_upload << "ms (upload)\t";
+    fmt::print("Latency:\t {}ms (upload)\t", delta_upload);
     std::cout.flush();
 
     cv::cuda::GpuMat disp_gpu;
@@ -156,7 +156,7 @@ int main(int argc, char const* const* argv) {
 
     DELTA_MS(match);
 
-    std::cout << delta_match << "ms (match)\t";
+    fmt::print("{}ms (match)\t", delta_match);
     std::cout.flush();
 
     tick = std::chrono::high_resolution_clock::now();
@@ -165,7 +165,7 @@ int main(int argc, char const* const* argv) {
 
     DELTA_MS(download);
 
-    std::cout << delta_download << "ms (download)" << std::endl;
+    fmt::println("{}ms (download)", delta_download);
 
 #else
 
@@ -175,7 +175,7 @@ int main(int argc, char const* const* argv) {
 
     DELTA_MS(match);
 
-    std::cout << "Latency:\t" << delta_match << "ms" << std::endl;
+    fmt::println("Latency:\t{}ms", delta_match);
 
 #endif
 

@@ -99,7 +99,7 @@ int main(void) {
 
     double err = maxerr(gmem, smem);
 
-    std::cout << "max-err: " << err << std::endl;
+    fmt::println("max-err: {}", err);
     if (err > 2.0) {
         return 1;
     }
