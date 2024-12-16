@@ -16,10 +16,8 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#if __cplusplus >= 202002L // c++20
-    #define UNLIKELY [[unlikely]]
-    #define LIKELY [[likely]]
-#else
-    #define UNLIKELY
-    #define LIKELY
-#endif
+#include "formatable.hpp"
+
+auto fmt::formatter<cv::Size>::format(const cv::Size &sz, format_context& ctx) const -> format_context::iterator {
+    return format_to(ctx.out(), "({}, {})", sz.height, sz.width);
+}

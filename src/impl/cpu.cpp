@@ -17,7 +17,6 @@
  */
 
 #include "common.hpp"
-#include "compat.hpp"
 
 #include <limits>
 #include <variant>
@@ -25,7 +24,8 @@
 
 #include "cpu.hpp"
 
-#include "impl/common.hpp"
+#include <fmt/core.h>
+
 #include "impl/cpu/agree.hpp"
 #include "impl/cpu/bicos.hpp"
 #include "impl/cpu/descriptor_transform.hpp"
@@ -148,7 +148,7 @@ void match(
                 match_impl<uint16_t, std::bitset<256>>(stack0, stack1, cfg.nxcorr_threshold, cfg.subpixel_step, min_var, cfg.variant, cfg.mode, size, n, disparity, corrmap);
             break;
         default:
-            throw std::invalid_argument(BICOS::format("input stacks too large, would require {} bits", required_bits));
+            throw std::invalid_argument(fmt::format("input stacks too large, would require {} bits", required_bits));
     }
 
     // clang-format on

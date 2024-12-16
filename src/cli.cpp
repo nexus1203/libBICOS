@@ -25,9 +25,10 @@
 #include <optional>
 
 #include <cxxopts.hpp>
+#include <fmt/core.h>
+#include <opencv2/imgproc.hpp>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
 
 #ifdef BICOS_CUDA
     #include <opencv2/core/cuda.hpp>
@@ -82,11 +83,11 @@ int main(int argc, char const* const* argv) {
     // clang-format on
 
     if (args.count("help")) {
-        std::cout << opts.help() << std::endl;
+        fmt::println( opts.help());
         return 0;
     }
 
-    std::cout << LICENSE_HEADER << std::endl;
+    fmt::println(LICENSE_HEADER);
 
     if (!isatty(STDOUT_FILENO))
         std::cerr << "Danger: bicos-cli does not have a stable CLI interface\n";
@@ -102,7 +103,7 @@ int main(int argc, char const* const* argv) {
         q_store = args["qmatrix"].as<std::string>();
 
         if (!std::filesystem::exists(q_store.value()))
-            throw std::invalid_argument(format("'{}' does not exist", q_store.value().string()));
+            throw std::invalid_argument(fmt::format("'{}' does not exist", q_store.value().string()));
     }
 
     if (args.count("folder1"))
@@ -125,11 +126,9 @@ int main(int argc, char const* const* argv) {
         }
 
         if (lstack.size() != rstack.size())
-            throw std::invalid_argument(
-                format("Left stack: {}, right stack: {} images", lstack.size(), rstack.size())
-            );
+            throw std::invalid_argument(fmt::format("Left stack: {}, right stack: {} images", lstack.size(), rstack.size()));
 
-        std::cout << "Loaded " << lstack.size() + rstack.size() << " images total\n";
+        fmt::println("Loaded {} images in total", lstack.size() + rstack.size());
     }
 
     // clang-format off
@@ -180,7 +179,7 @@ int main(int argc, char const* const* argv) {
 
     DELTA_MS(upload);
 
-    std::cout << "Latency:\t" << delta_upload << "ms (upload)\t";
+    fmt::print("Latency:\t {}ms (upload)\t", delta_upload);
     std::cout.flush();
 
     cv::cuda::GpuMat disp_gpu, corr_gpu;
@@ -191,7 +190,7 @@ int main(int argc, char const* const* argv) {
 
     DELTA_MS(match);
 
-    std::cout << delta_match << "ms (match)\t";
+    fmt::print("{}ms (match)\t", delta_match);
     std::cout.flush();
 
     tick = std::chrono::high_resolution_clock::now();
@@ -202,7 +201,7 @@ int main(int argc, char const* const* argv) {
 
     DELTA_MS(download);
 
-    std::cout << delta_download << "ms (download)" << std::endl;
+    fmt::println("{}ms (download)", delta_download);
 
 #else
 
@@ -212,7 +211,7 @@ int main(int argc, char const* const* argv) {
 
     DELTA_MS(match);
 
-    std::cout << "Latency:\t" << delta_match << "ms" << std::endl;
+    fmt::println("Latency:\t{}ms", delta_match);
 
 #endif
 
@@ -244,7 +243,7 @@ int main(int argc, char const* const* argv) {
                 save_pointcloud<float>(points, disp, outfile);
                 break;
             default:
-                throw std::runtime_error(format("Got unexpected disparity type: {}", disp.type()));
+                throw std::runtime_error(fmt::format("Got unexpected disparity type: {}", disp.type()));
         }
     }
 

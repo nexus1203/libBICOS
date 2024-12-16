@@ -18,13 +18,16 @@
 
 #include "fileutils.hpp"
 #include "common.hpp"
-#include "compat.hpp"
-#include "opencv2/core.hpp"
 
 #include <filesystem>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
+#include <fstream>
+#include <iostream>
+#include <ostream>
 #include <stdexcept>
+
+#include <fmt/core.h>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 namespace BICOS {
 
@@ -43,14 +46,14 @@ void save_image(const cv::Mat& image, std::filesystem::path outfile, cv::Colorma
     colorized.setTo(0, mask);
 
     if (!cv::imwrite(outfile.replace_extension("png"), colorized))
-        std::cerr << "Could not save to\t" << outfile << std::endl;
+        fmt::println(stderr, "Could not save to\t{}", outfile.string());
     else
-        std::cout << "Saved normalized & colorized to\t\t" << outfile << std::endl;
+        fmt::println("Saved colorized disparity to\t\t{}", outfile.string());
 
     if (!cv::imwrite(outfile.replace_extension("tiff"), image))
-        std::cerr << "Could not save to\t" << outfile << std::endl;
+        fmt::println(stderr, "Could not save to\t{}", outfile.string());
     else
-        std::cout << "Saved floating-point to\t\t\t" << outfile << std::endl;
+        fmt::println(stderr, "Saved floating-point disparity to\t{}", outfile.string());
 }
 
 static void
@@ -121,7 +124,7 @@ void read_sequence(
 
     if (lseq.size() != rseq.size()) {
         throw std::invalid_argument(
-            BICOS::format("Unequal number of images; left: {}, right: {}", lseq.size(), rseq.size())
+            fmt::format("Unequal number of images; left: {}, right: {}", lseq.size(), rseq.size())
         );
     }
 }

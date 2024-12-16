@@ -16,10 +16,10 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#if __cplusplus >= 202002L // c++20
-    #define UNLIKELY [[unlikely]]
-    #define LIKELY [[likely]]
-#else
-    #define UNLIKELY
-    #define LIKELY
-#endif
+#include <fmt/format.h>
+
+#include <opencv2/core.hpp>
+
+template <> struct fmt::formatter<cv::Size>: formatter<string_view> {
+    auto format(const cv::Size &sz, format_context& ctx) const -> format_context::iterator;
+};

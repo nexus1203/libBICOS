@@ -19,10 +19,11 @@
 #pragma once
 
 #include <climits>
-#include <opencv2/core/cuda/common.hpp>
 #include <random>
 #include <iostream>
-#include "compat.hpp"
+
+#include <fmt/core.h>
+#include <opencv2/core/cuda/common.hpp>
 
 #include "stepbuf.hpp"
 
@@ -65,7 +66,7 @@ bool equals_(const cv::Mat_<T>& a, const cv::Mat_<T>& b) {
                 continue;
 
             if (va != vb) {
-                std::cerr << BICOS::format("{} != {} at ({},{})\n", va, vb, col, row);
+                fmt::println(stderr, "{} != {} at ({},{})\n", va, vb, col, row);
                 return false;
             }
         }

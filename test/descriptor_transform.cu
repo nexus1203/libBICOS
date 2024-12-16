@@ -17,12 +17,11 @@
  */
 
 #include "common.cuh"
-
+#include "formatable.hpp"
 #include "impl/cpu/descriptor_transform.hpp"
 #include "impl/cuda/cutil.cuh"
 #include "impl/cuda/descriptor_transform.cuh"
 
-#include <iostream>
 #include <opencv2/core/cuda.hpp>
 
 using namespace BICOS;
@@ -44,8 +43,7 @@ int main(void) {
 
     const cv::Size randsize(randint(256, 1028), randint(128, 512));
 
-    std::cout << "limited descriptor transform on " << randsize << " " << STR(INPUT_TYPE) << " "
-              << STR(DESCRIPTOR_TYPE) << std::endl;
+    fmt::println("limited descriptor transform on {} {} {}", randsize, STR(INPUT_TYPE), STR(DESCRIPTOR_TYPE));
 
     int max_bits = sizeof(DESCRIPTOR_TYPE) * 8;
 

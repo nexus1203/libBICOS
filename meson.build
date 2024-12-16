@@ -21,38 +21,16 @@ pkg = import('pkgconfig')
 fs  = import('fs')
 cc  = meson.get_compiler('cpp')
 
-cppver = cc.first_supported_argument('-std=c++20', '-std=c++17')
-if cppver.length() == 0
-    error('At least c++17 is required')
-else
-    cppver = cppver[0].split('=')[-1]
-endif
-
+cppver = 'c++17'
 override_options = [f'cpp_std=@cppver@']
 
 impl = get_option('implementation')
-srcs = files('src/lib.cpp', 'src/exception.cpp')
+srcs = files('src/lib.cpp', 'src/exception.cpp', 'src/formatable.cpp')
 incls = include_directories('include')
-deps = [dependency('opencv4')]
-
-has_builtin_format = cc.compiles('''
-    #include <format>
-    std::string fmtcheck() { return std::format("Recent c++ standard, anyone?"); }
-''', name: 'std::format', args: f'-std=@cppver@')
-
-has_builtin_popcount = cc.compiles('''
-    #include <bit>
-    int popcheck() { return std::popcount(69420U); }
-''', name: 'std::popcount', args: f'-std=@cppver@')
-
-if not has_builtin_format
-    deps += dependency('fmt')
-    add_project_arguments('-DBICOS_FMT_FALLBACK', language: ['cpp', 'cuda'])
-endif
-
-if not has_builtin_popcount
-    add_project_arguments('-DBICOS_POPCNT_FALLBACK', language: ['cpp', 'cuda'])
-endif
+deps = [
+    dependency('opencv4'),
+    dependency('fmt', version: '>=11.0.0')
+]
 
 is_debug = get_option('buildtype') in ['debug', 'debugoptimized']
 if is_debug
@@ -108,22 +86,20 @@ libbicos_dep = declare_dependency(
 )
 meson.override_dependency('BICOS', libbicos_dep)
 
-cxxopts = dependency('cxxopts', required: false, not_found_message: 'library cxxopts not found, skipping CLI build.')
-if cxxopts.found()
-    cli_tgt = executable(
-        'bicos-cli',
-        sources: ['src/cli.cpp', 'src/fileutils.cpp', 'src/exception.cpp'],
-        include_directories: incls,
-        dependencies: deps + cxxopts,
-        link_with: libs,
-        install: true,
-        override_options: override_options,
-    )
-endif
+cxxopts = dependency('cxxopts', version: '>=3.0.0')
+cli_tgt = executable(
+    'bicos-cli',
+    sources: ['src/cli.cpp', 'src/fileutils.cpp', 'src/exception.cpp'],
+    include_directories: incls,
+    dependencies: deps + cxxopts,
+    link_with: libs,
+    install: true,
+    override_options: override_options,
+)
 
 if impl == 'cuda'
     datdir = join_paths(meson.project_source_root(), 'data')
-    srcs = files('src/impl/cuda.cu', 'src/impl/cpu.cpp', 'src/fileutils.cpp', 'src/exception.cpp')
+    srcs = files('src/impl/cuda.cu', 'src/impl/cpu.cpp', 'src/fileutils.cpp', 'src/exception.cpp', 'src/formatable.cpp')
     incls = [incls, include_directories('test/include')]
 
     depths = [32, 64]
@@ -240,7 +216,7 @@ if impl == 'cuda'
             timeout: 150
         )
 
-        if impl == 'cuda' and cxxopts.found()
+        if impl == 'cuda'
             test('regress_cuda',
                 find_program('test/regress.bash'),
                 depends: cli_tgt,

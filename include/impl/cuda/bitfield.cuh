@@ -85,6 +85,6 @@ struct Bitfield<varuint_<NBits>> {
 };
 
 template<typename T>
-using Bitfield_t = Bitfield<T>::type;
+using Bitfield_t = typename Bitfield<T>::type;
 
 } // namespace BICOS::impl::cuda
