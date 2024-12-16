@@ -10,17 +10,15 @@ This is the implementation of the corresponding paper to appear in [Optical 3D M
 
 Dependencies:
 
-- `gcc` or equivalent C compiler with C++20 (C++17 experimental) support (build)
+- `gcc` or equivalent C compiler with C++17 support (build)
 - [`meson`](https://github.com/mesonbuild/meson) >= 1.1.0 (build)
 - `opencv 4.x` with cuda support
-- `cuda 12.x` including toolkit 
-- [`fmt`](https://github.com/fmtlib/fmt) (C++17)
-- [`cxxopts`](https://github.com/jarro2783/cxxopts) (optional, for cli)
+- `cuda 12.x` including toolkit
 - [`benchmark`](https://github.com/google/benchmark) (optional, for executing benchmarks)
 
 ```bash
 # recommended: clone the most recent release
-$ git clone --depth 1 --branch v1.2.1 https://github.com/JMUWRobotics/libBICOS
+$ git clone --depth 1 --branch v1.2.2 https://github.com/JMUWRobotics/libBICOS
 $ cd libBICOS
 
 $ meson setup builddir --buildtype release
