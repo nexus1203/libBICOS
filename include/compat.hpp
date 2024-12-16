@@ -16,6 +16,8 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #if __cplusplus >= 202002L // c++20
     #define UNLIKELY [[unlikely]]
     #define LIKELY [[likely]]
