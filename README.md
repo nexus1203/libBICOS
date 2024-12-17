@@ -4,7 +4,18 @@ BInary COrrespondence Search for multi-shot stereo imaging, with optional CUDA a
 
 ## Citing:
 
-This is the implementation of the corresponding paper to appear in [Optical 3D Metrology](https://o3dm.fbk.eu). *BibTeX will appear here when available.*
+This is the implementation of the [corresponding paper](https://isprs-archives.copernicus.org/articles/XLVIII-2-W7-2024/57/2024/isprs-archives-XLVIII-2-W7-2024-57-2024.pdf) which appeared in [Optical 3D Metrology 2024](https://o3dm.fbk.eu):
+```bibtex
+@article{liebender2024libbicos,
+  title={libBICOS -- An Open Source GPU-Accelerated Library implementing BInary COrrespondence Search for 3D Reconstruction},
+  author={Liebender, Christoph and Bleier, Michael and N{\"u}chter, Andreas},
+  journal={The International Archives of the Photogrammetry, Remote Sensing and Spatial Information Sciences},
+  volume={48},
+  pages={57--64},
+  year={2024},
+  publisher={Copernicus Publications G{\"o}ttingen, Germany}
+}
+```
 
 ## Build:
 
