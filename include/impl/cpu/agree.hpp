@@ -72,7 +72,7 @@ static void agree(
 
                 const int idx1 = col - d;
 
-                if (idx1 < 0 || sz.width <= idx1) UNLIKELY {
+                if UNLIKELY(idx1 < 0 || sz.width <= idx1) {
                     d = INVALID_DISP<int16_t>;
                     continue;
                 }
@@ -120,10 +120,10 @@ static void agree_subpixel(
 
                 const int col1 = col - d;
 
-                if (col1 < 0 || sz.width <= col1) UNLIKELY
+                if UNLIKELY(col1 < 0 || sz.width <= col1)
                     continue;
 
-                if (col1 == 0 || col1 == sz.width - 1) UNLIKELY {
+                if UNLIKELY(col1 == 0 || col1 == sz.width - 1) {
                     float nxc = nxcorr(
                         stack0.ptr<TInput>(row, col),
                         stack1.ptr<TInput>(row, col1),

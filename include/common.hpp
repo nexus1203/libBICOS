@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include "opencv2/core/mat.hpp"
 #if !defined(BICOS_CUDA) && !defined(BICOS_CPU)
     #include "config.hpp"
 #endif

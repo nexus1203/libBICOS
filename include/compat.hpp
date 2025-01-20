@@ -19,9 +19,9 @@
 #pragma once
 
 #if __cplusplus >= 202002L // c++20
-    #define UNLIKELY [[unlikely]]
-    #define LIKELY [[likely]]
+    #define UNLIKELY(x) (x) [[unlikely]]
+    #define LIKELY(x) (x) [[likely]]
 #else
-    #define UNLIKELY
-    #define LIKELY
+    #define UNLIKELY(x) (__builtin_expect(!!(x), 0))
+    #define LIKELY(x) (__builtin_expect(!!(x), 1))
 #endif
