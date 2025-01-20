@@ -29,7 +29,7 @@ Dependencies:
 
 ```bash
 # recommended: clone the most recent release
-$ git clone --depth 1 --branch v1.2.2 https://github.com/JMUWRobotics/libBICOS
+$ git clone --depth 1 --branch v2.0.0 https://github.com/JMUWRobotics/libBICOS
 $ cd libBICOS
 
 $ meson setup builddir --buildtype release
@@ -61,13 +61,14 @@ will get you:
 #### Pointcloud
 ![Example pointcloud](/example-pcl.png)
 
-While only requiring ~110ms (RTX4090) and ~1.6GB VRAM for matching on two stacks of 33 images each.
+While only requiring ~44ms (RTX4090) and ~1.6GB VRAM for matching on two stacks of 33 images each.
 
 The most significant parameters can be summarized:
 
 - `--threshold`: increasing this reduces match-outliers. High values rely on a reliable pattern.
 - `--variance`: high values reduce coarse outliers, e.g. pixels where no pattern was projected. May reduce correct matches on low pattern contrast.
 - `--step`: optional value for subpixel-interpolation around matches.
+- `--lr-maxdiff`: use a maximum left-right disparity difference as a postfilter instead of no-duplicates.
 
 Other settings are available; Try `bicos-cli -h` for details.
 
