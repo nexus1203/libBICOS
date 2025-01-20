@@ -83,7 +83,7 @@ int main(int argc, char const* const* argv) {
     // clang-format on
 
     if (args.count("help")) {
-        fmt::println( opts.help());
+        fmt::println("{}", opts.help());
         return 0;
     }
 
