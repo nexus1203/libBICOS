@@ -203,18 +203,21 @@ if impl == 'cuda'
 
     has_data = fs.is_dir(datdir / 'left') and fs.is_dir(datdir / 'right')
     if has_data
-        test('integration_raw',
-            executable('test_integration_raw',
-                sources: srcs + 'test/integration_raw.cu',
-                dependencies: deps,
-                include_directories: incls,
-                cuda_args: '-DBICOS_CUDA',
-                cpp_args: '-DBICOS_CPU',
-                override_options: override_options,
-            ),
-            args: [datdir / 'left', datdir / 'right'],
-            timeout: 150
-        )
+        foreach bicosflags: [0, 1, 2]
+            testname = f'integration_raw_@bicosflags@'
+            test(testname,
+                executable('test_' + testname,
+                    sources: srcs + 'test/integration_raw.cu',
+                    dependencies: deps,
+                    include_directories: incls,
+                    cuda_args: ['-DBICOS_CUDA', f'-DBICOSFLAGS=@bicosflags@'],
+                    cpp_args: '-DBICOS_CPU',
+                    override_options: override_options,
+                ),
+                args: [datdir / 'left', datdir / 'right'],
+                timeout: 150
+            )
+        endforeach
 
         if impl == 'cuda'
             test('regress_cuda',
