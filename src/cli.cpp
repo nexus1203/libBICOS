@@ -1,6 +1,6 @@
 /**
  *  libBICOS: binary correspondence search on multishot stereo imagery
- *  Copyright (C) 2024  Robotics Group @ Julius-Maximilian University
+ *  Copyright (C) 2024-2025  Robotics Group @ Julius-Maximilian University
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as
@@ -47,7 +47,7 @@
 using namespace BICOS;
 
 #define LICENSE_HEADER \
-    "libBICOS  Copyright (C) 2024  Robotics Group @ JMU\n" \
+    "libBICOS  Copyright (C) 2024-2025  Robotics Group @ JMU\n" \
     "This program is free software, and you are welcome to redistribute\n" \
     "it under the conditions of the GNU LGPL-3.0-or-later license.\n" \
     "Refer to https://github.com/JMUWRobotics/libBICOS for details.\n"

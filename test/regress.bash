@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 ##  libBICOS: binary correspondence search on multishot stereo imagery
-##  Copyright (C) 2024  Robotics Group @ Julius-Maximilian University
+##  Copyright (C) 2024-2025  Robotics Group @ Julius-Maximilian University
 ##
 ##  This program is free software: you can redistribute it and/or modify
 ##  it under the terms of the GNU Lesser General Public License as
