@@ -120,7 +120,7 @@ void match(
         : 4 * n - 7;
 
     const cv::Size size = _stack0.front().size();
-    float min_var = n * cfg.min_variance.value_or(1.0);
+    std::optional min_var = cfg.min_variance.has_value() ? std::optional(cfg.min_variance.value() * n) : std::nullopt;
 
     switch (required_bits) {
         case 0 ... 32:

@@ -96,7 +96,7 @@
             "type": "cuda-gdb",
             "request": "launch",
             "program": "${workspaceFolder}/builddir/test_integration",
-            "args": ["${workspaceFolder}/data"]
+            "args": ["${workspaceFolder}/data/left ${workspaceFolder}/data/right"]
         },
         {
             "name": "integration_raw",

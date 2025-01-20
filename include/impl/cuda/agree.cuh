@@ -84,7 +84,7 @@ __device__ __forceinline__ float nxcorrf(const T* __restrict__ pix0, const T* __
         if (var0 < minvar || var1 < minvar)
             return -1.0f;
 
-    return covar * rsqrtf(var0 * var1);
+    return covar / sqrtf(var0 * var1);
 }
 
 template<typename TInput, typename TPrecision, NXCVariant VARIANT, bool CORRMAP>

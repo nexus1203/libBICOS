@@ -18,5 +18,7 @@
 
 set -xeu
 
+buildtype=$(meson introspect builddir --buildoptions | grep -Po '(?<=\{"name": "buildtype", "value": ")[a-z]+(?=")')
+
 builddir/bicos-cli data/left data/right -t 0.9 -s 0.1 -n 12 --double -o /tmp/bicos-regress
-diff test/regress_cuda.tiff /tmp/bicos-regress.tiff
+diff "test/regress_cuda_${buildtype:-release}.tiff" /tmp/bicos-regress.tiff

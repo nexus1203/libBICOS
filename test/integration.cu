@@ -42,7 +42,7 @@ int main(int argc, char const* const* argv) {
         Config cfg { .nxcorr_threshold = thresh,
                      .subpixel_step = std::nullopt,
                      .mode = TransformMode::LIMITED,
-                     .precision = Precision::DOUBLE };
+                     .precision = Precision::SINGLE };
 
         cv::Mat dhost, ddev_host;
         cv::cuda::GpuMat ddev;
