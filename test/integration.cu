@@ -44,24 +44,16 @@ int main(int argc, char const* const* argv) {
                      .mode = TransformMode::LIMITED,
                      .precision = Precision::SINGLE };
 
-        cv::Mat dhost, ddev_host;
-        cv::cuda::GpuMat ddev;
+        for (auto variant: { SearchVariant(Variant::NoDuplicates {}),
+                             SearchVariant(Variant::Consistency { 1, false }),
+                             SearchVariant(Variant::Consistency { 2, true }) })
+        {
+            cfg.variant = variant;
 
-        cv::cuda::Stream stream;
-        impl::cuda::match(ldev, rdev, ddev, cfg, nullptr, stream);
-        ddev.download(ddev_host, stream);
+            cv::Mat dhost, ddev_host;
+            cv::cuda::GpuMat ddev;
 
-        impl::cpu::match(lhost, rhost, dhost, cfg, nullptr);
-        stream.waitForCompletion();
-
-        if (!equals(dhost, ddev_host)) {
-            std::cerr << "thresh: " << thresh << std::endl;
-            return 1;
-        }
-
-        for (float step: { 0.1f, 0.25f, 0.5f }) {
-            cfg.subpixel_step = step;
-
+            cv::cuda::Stream stream;
             impl::cuda::match(ldev, rdev, ddev, cfg, nullptr, stream);
             ddev.download(ddev_host, stream);
 
@@ -69,8 +61,23 @@ int main(int argc, char const* const* argv) {
             stream.waitForCompletion();
 
             if (!equals(dhost, ddev_host)) {
-                std::cerr << "thresh: " << thresh << " step: " << step << std::endl;
+                std::cerr << "thresh: " << thresh << std::endl;
                 return 1;
+            }
+
+            for (float step: { 0.1f, 0.25f, 0.5f }) {
+                cfg.subpixel_step = step;
+
+                impl::cuda::match(ldev, rdev, ddev, cfg, nullptr, stream);
+                ddev.download(ddev_host, stream);
+
+                impl::cpu::match(lhost, rhost, dhost, cfg, nullptr);
+                stream.waitForCompletion();
+
+                if (!equals(dhost, ddev_host)) {
+                    std::cerr << "thresh: " << thresh << " step: " << step << std::endl;
+                    return 1;
+                }
             }
         }
     }
