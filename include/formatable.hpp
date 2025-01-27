@@ -21,7 +21,14 @@
 #include <fmt/format.h>
 
 #include <opencv2/core.hpp>
+#include <bitset>
 
-template <> struct fmt::formatter<cv::Size>: formatter<string_view> {
+template <> struct fmt::formatter<cv::Size> : formatter<string_view> {
     auto format(const cv::Size &sz, format_context& ctx) const -> format_context::iterator;
+};
+
+template <size_t N> struct fmt::formatter<std::bitset<N>> : formatter<string_view> {
+    auto format(const std::bitset<N> &set, format_context& ctx) const -> format_context::iterator {
+        return format_to(ctx.out(), "{}", set.to_string());
+    }
 };
