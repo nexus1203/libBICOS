@@ -239,7 +239,8 @@ __global__ void agree_subpixel_kernel(
         if (best_nxc < min_nxc)
             return;
 
-        out(row, col) = d + best_x;
+        // larger x -> further to the right -> less disparity
+        out(row, col) = d - best_x;
 
         // clang-format on 
     }

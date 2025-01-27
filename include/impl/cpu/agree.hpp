@@ -180,7 +180,7 @@ static void agree_subpixel(
                     if (best_nxc < min_nxc)
                         continue;
 
-                    ret_row.at<float>(col) = d + best_x;
+                    ret_row.at<float>(col) = d - best_x;
                 }
             }
         }
