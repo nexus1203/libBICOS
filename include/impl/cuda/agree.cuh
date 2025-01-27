@@ -19,7 +19,7 @@
 #pragma once
 
 #include "common.hpp"
-#include "cutil.cuh"
+#include "impl/common.hpp"
 #include "compat.hpp"
 
 #include <opencv2/core/cuda/common.hpp>
@@ -124,7 +124,7 @@ __global__ void agree_kernel(
         pix0[t] = __ldg(stack0[t].ptr(row) + col);
         pix1[t] = __ldg(stack1[t].ptr(row) + col1);
 #ifdef BICOS_DEBUG
-        if (t >= 33)
+        if (t >= PIX_STACKSIZE)
             __trap();
 #endif
     }

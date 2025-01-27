@@ -20,6 +20,8 @@
 
 #include <cstdint>
 
+#define PIX_STACKSIZE 65
+
 namespace BICOS::impl {
 
 template<typename T>

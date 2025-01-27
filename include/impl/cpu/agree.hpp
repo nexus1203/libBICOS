@@ -20,6 +20,7 @@
 
 #include "common.hpp"
 #include "compat.hpp"
+#include "impl/common.hpp"
 
 namespace BICOS::impl::cpu {
 
@@ -141,8 +142,8 @@ static void agree_subpixel(
                 } else {
                     // clang-format off
 
-                    TInput interp[33];
-                    float a[33], b[33], c[33];
+                    TInput interp[PIX_STACKSIZE];
+                    float a[PIX_STACKSIZE], b[PIX_STACKSIZE], c[PIX_STACKSIZE];
 
                     const TInput *y0 = stack1.ptr<TInput>(row, col1 - 1),
                                  *y1 = stack1.ptr<TInput>(row, col1    ),
@@ -153,7 +154,7 @@ static void agree_subpixel(
                         b[t] = 0.5f * (-y0[t]                + y2[t]);
                         c[t] = y1[t];
 #ifdef BICOS_DEBUG
-                        assert(t < 33);
+                        assert(t < PIX_STACKSIZE);
 #endif
                     }
 
