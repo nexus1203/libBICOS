@@ -23,6 +23,7 @@
 #include <filesystem>
 #include <iostream>
 #include <fstream>
+#include <fmt/std.h>
 
 #include <opencv2/core.hpp>
 #include <opencv2/core/cuda.hpp>
@@ -44,6 +45,7 @@ template <typename TDisparity>
 void save_pointcloud(
     const cv::Mat3f points,
     const cv::Mat_<TDisparity>& disparity,
+    bool allow_negative_z,
     std::filesystem::path outfile
 ) {
     if (points.size() != disparity.size())
@@ -51,11 +53,12 @@ void save_pointcloud(
 
     std::ofstream xyz(outfile.replace_extension("xyz"));
 
-    size_t n_nonfinite = 0;
+    size_t n_nonfinite  = 0,
+           n_negative_z = 0;
 
     for (int row = 0; row < points.rows; ++row) {
         for (int col = 0; col < points.cols; ++col) {
-            if (std::isnan(disparity(row, col)) || disparity(row, col) == BICOS::INVALID_DISP<TDisparity>)
+            if (is_invalid(disparity(row, col)))
                 continue;
 
             cv::Vec3f point = points(row, col);
@@ -67,6 +70,11 @@ void save_pointcloud(
                 continue;
             }
 
+            if (!allow_negative_z && z < 0.0f) {
+                n_negative_z++;
+                continue;
+            }
+
             xyz << x << ' ' << y << ' ' << z << '\n';
         }
     }
@@ -74,11 +82,11 @@ void save_pointcloud(
     xyz.flush();
     xyz.close();
 
-    std::cout << "Saved pointcloud in ascii-format to\t" << outfile << '\n';
+    fmt::println("Saved pointcloud in ascii-format to\t{}", outfile);
     if (n_nonfinite > 0)
-        std::cout << "Skipped " << n_nonfinite << " points with non-finite fp values\n";
-
-    std::cout.flush();
+        fmt::println(stderr, "Skipped {} points with non-finite fp values", n_nonfinite);
+    if (n_negative_z > 0)
+        fmt::println(stderr, "Skipped {} points with negative Z values", n_negative_z);
 }
 
 void save_image(const cv::Mat& image, std::filesystem::path outfile, cv::ColormapTypes cmap = cv::COLORMAP_TURBO);

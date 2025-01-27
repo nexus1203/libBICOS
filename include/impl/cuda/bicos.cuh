@@ -50,7 +50,7 @@ static __device__ __forceinline__ int ham(const varuint_<NBits> &a, const varuin
 template<typename TDescriptor, TDescriptor (*FLoad)(const TDescriptor*), int FLAGS>
 static __device__ __forceinline__ int
 bicos_search(TDescriptor d0, const TDescriptor* row1, size_t cols) {
-    int best_col1 = -1, min_cost = INT_MAX, num_duplicate_minima = 0;
+    int best_col1 = INVALID_DISP<int>, min_cost = INT_MAX, num_duplicate_minima = 0;
 
     for (size_t col1 = 0; col1 < cols; ++col1) {
         const TDescriptor d1 = FLoad(row1 + col1);
@@ -69,7 +69,7 @@ bicos_search(TDescriptor d0, const TDescriptor* row1, size_t cols) {
 
     if constexpr (FLAGS & BICOSFLAGS_NODUPES)
         if (0 < num_duplicate_minima)
-            return -1;
+            return INVALID_DISP<int>;
 
     return best_col1;
 }
@@ -98,7 +98,7 @@ __global__ void bicos_kernel_smem(
 
     __syncthreads();
 
-    int best_col1 = -1;
+    int best_col1 = INVALID_DISP<int>;
     if (col < out.cols) {
         best_col1 = bicos_search<TDescriptor, load_deref, FLAGS>(
             load_datacache(descr0->row(row) + col),
@@ -111,7 +111,7 @@ __global__ void bicos_kernel_smem(
         __syncthreads();
 
         TDescriptor d1;
-        if (best_col1 != -1)
+        if (!is_invalid(best_col1))
             d1 = row1[best_col1];
 
         TDescriptor* row0 = (TDescriptor*)_row;
@@ -121,7 +121,7 @@ __global__ void bicos_kernel_smem(
 
         __syncthreads();
 
-        if (col >= out.cols || best_col1 == -1)
+        if (col >= out.cols || is_invalid(best_col1))
             return;
 
         int reverse_col0 = bicos_search<TDescriptor, load_deref, FLAGS>(
@@ -130,12 +130,12 @@ __global__ void bicos_kernel_smem(
             out.cols
         );
 
-        if (reverse_col0 != -1 && abs(col - reverse_col0) <= max_lr_diff)
-            out(row, col) = abs(__hadd(col, reverse_col0) - best_col1);
+        if (!is_invalid(reverse_col0) && abs(col - reverse_col0) <= max_lr_diff)
+            out(row, col) = __hadd(col, reverse_col0) - best_col1;
 
     } else {
-        if (best_col1 != -1)
-            out(row, col) = abs(col - best_col1);
+        if (!is_invalid(best_col1))
+            out(row, col) = col - best_col1;
     }
 }
 
@@ -158,7 +158,7 @@ __global__ void bicos_kernel(
         out.cols
     );
 
-    if (best_col1 == -1)
+    if (is_invalid(best_col1))
         return;
 
     if constexpr (FLAGS & BICOSFLAGS_CONSISTENCY) {
@@ -169,10 +169,10 @@ __global__ void bicos_kernel(
                 out.cols
             );
 
-        if (reverse_col0 != -1 && abs(col - reverse_col0) <= max_lr_diff)
-            out(row, col) = abs((col + reverse_col0) / 2 - best_col1);
+        if (!is_invalid(reverse_col0) && abs(col - reverse_col0) <= max_lr_diff)
+            out(row, col) = __hadd(col, reverse_col0) - best_col1;
     } else
-        out(row, col) = abs(col - best_col1);
+        out(row, col) = col - best_col1;
 }
 
 } // namespace BICOS::impl::cuda

@@ -33,7 +33,19 @@ using uint128_t = __uint128_t;
 
 template<typename T>
 constexpr T INVALID_DISP =
-    std::numeric_limits<T>::has_quiet_NaN ? std::numeric_limits<T>::quiet_NaN() : (T)-1;
+    std::numeric_limits<T>::has_quiet_NaN ? std::numeric_limits<T>::quiet_NaN()
+                                          : std::numeric_limits<T>::lowest();
+
+template<typename T>
+constexpr bool is_invalid(T disparity) {
+#ifndef __CUDACC__
+    using std::isnan;
+#endif
+    if constexpr (std::is_floating_point_v<T>)
+        return isnan(disparity);
+    else
+        return disparity == INVALID_DISP<T>;
+}
 
 #if defined(BICOS_CPU)
 using Image = cv::Mat;

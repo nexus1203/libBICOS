@@ -68,7 +68,7 @@ static void agree(
             for (int col = 0; col < sz.width; ++col) {
                 int16_t& d = raw_row.at<int16_t>(col);
 
-                if (d == INVALID_DISP<int16_t>)
+                if (is_invalid(d))
                     continue;
 
                 const int idx1 = col - d;
@@ -116,7 +116,7 @@ static void agree_subpixel(
             for (int col = 0; col < sz.width; ++col) {
                 const int16_t d = raw_row.at<int16_t>(col);
 
-                if (d == INVALID_DISP<int16_t>)
+                if (is_invalid(d))
                     continue;
 
                 const int col1 = col - d;

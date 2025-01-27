@@ -66,6 +66,7 @@ int main(int argc, char const* const* argv) {
         ("o,out", "Output file for disparity image.", cxxopts::value<std::string>()->default_value("bicosdisp.png"))
         ("n,stacksize", "Number of images to process. Defaults to all found in the input folders.", cxxopts::value<uint>())
         ("q,qmatrix", "Path to cv::FileStorage with single matrix \"Q\" for reconstructing a pointcloud.", cxxopts::value<std::string>())
+        ("allow-negative-z", "Allow for points with negative Z values in the pointcloud output. Only effective with a given qmatrix.")
         ("m,lr-maxdiff", "Maximum disparity difference between left and right image. Enabling this disables duplicate filtering.", cxxopts::value<uint>())
 #ifdef BICOS_CUDA
         ("double", "Set double instead of single precision")
@@ -227,6 +228,7 @@ int main(int argc, char const* const* argv) {
     if (q_store.has_value()) {
         cv::Mat Q;
         cv::Mat3f points;
+        bool allow_negative_z = args.count("allow-behind");
         cv::FileStorage fs(q_store.value(), cv::FileStorage::READ);
 
         fs["Q"] >> Q;
@@ -237,10 +239,10 @@ int main(int argc, char const* const* argv) {
 
         switch (disp.type()) {
             case CV_16SC1:
-                save_pointcloud<int16_t>(points, disp, outfile);
+                save_pointcloud<int16_t>(points, disp, allow_negative_z, outfile);
                 break;
             case CV_32FC1:
-                save_pointcloud<float>(points, disp, outfile);
+                save_pointcloud<float>(points, disp, allow_negative_z, outfile);
                 break;
             default:
                 throw std::runtime_error(fmt::format("Got unexpected disparity type: {}", disp.type()));

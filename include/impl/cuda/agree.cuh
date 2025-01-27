@@ -57,7 +57,7 @@ __device__ __forceinline__ double nxcorrd(const T* __restrict__ pix0, const T* _
         if (var0 < minvar || var1 < minvar)
             return -1.0;
 
-    return covar * rsqrt(var0 * var1);
+    return covar / sqrt(var0 * var1);
 }
 
 template<NXCVariant VARIANT, typename T>
@@ -104,7 +104,7 @@ __global__ void agree_kernel(
 
     int16_t &d = raw_disp(row, col);
 
-    if (d == INVALID_DISP<int16_t>)
+    if (is_invalid(d))
         return;
 
     const int col1 = col - d;
@@ -161,7 +161,7 @@ __global__ void agree_subpixel_kernel(
 
     const int16_t d = __ldg(raw_disp.ptr(row) + col);
 
-    if (d == INVALID_DISP<int16_t>)
+    if (is_invalid(d))
         return;
 
     const int col1 = col - d;
@@ -279,7 +279,7 @@ __global__ void agree_subpixel_kernel_smem(
 
     const int16_t d = raw_disp(row, col);
 
-    if (d == INVALID_DISP<int16_t>)
+    if (is_invalid(d))
         return;
 
     const int col1 = col - d;

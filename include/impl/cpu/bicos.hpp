@@ -49,7 +49,7 @@ template<size_t N>
 
 template<typename TDescriptor, int FLAGS>
 int bicos_search(TDescriptor d0, const TDescriptor* row1, size_t cols) {
-    int best_col1 = -1, min_cost = INT_MAX, num_duplicate_minima = 0;
+    int best_col1 = INVALID_DISP<int>, min_cost = INT_MAX, num_duplicate_minima = 0;
 
     for (size_t col1 = 0; col1 < cols; ++col1) {
         const TDescriptor d1 = row1[col1];
@@ -70,7 +70,7 @@ int bicos_search(TDescriptor d0, const TDescriptor* row1, size_t cols) {
 
     if constexpr (FLAGS & BICOSFLAGS_NODUPES)
         if (0 < num_duplicate_minima)
-            return -1;
+            return INVALID_DISP<int>;
 
     return best_col1;
 }
@@ -93,20 +93,20 @@ void bicos(
             for (int col0 = 0; col0 < out.cols; ++col0) {
                 int best_col1 = bicos_search<TDescriptor, FLAGS>(drow0[col0], drow1, out.cols);
 
-                if (best_col1 == -1)
+                if (is_invalid(best_col1))
                     continue;
 
                 if constexpr (FLAGS & BICOSFLAGS_CONSISTENCY) {
                     int reverse_col0 =
                         bicos_search<TDescriptor, FLAGS>(drow1[best_col1], drow0, out.cols);
 
-                    if (reverse_col0 == -1 || abs(col0 - reverse_col0) > max_lr_diff)
+                    if (is_invalid(reverse_col0) || abs(col0 - reverse_col0) > max_lr_diff)
                         continue;
 
-                    out.at<int16_t>(row, col0) = std::abs((col0 + reverse_col0) / 2 - best_col1);
+                    out.at<int16_t>(row, col0) = (col0 + reverse_col0) / 2 - best_col1;
 
                 } else
-                    out.at<int16_t>(row, col0) = std::abs(col0 - best_col1);
+                    out.at<int16_t>(row, col0) = col0 - best_col1;
             }
         }
     });
