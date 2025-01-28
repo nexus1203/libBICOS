@@ -129,7 +129,7 @@ int main(int argc, char const* const* argv) {
         if (lstack.size() != rstack.size())
             throw std::invalid_argument(fmt::format("Left stack: {}, right stack: {} images", lstack.size(), rstack.size()));
 
-        fmt::println("Loaded {} images in total", lstack.size() + rstack.size());
+        fmt::println("Loaded {} {}-bit images in total", lstack.size() + rstack.size(), lstack.front().elemSize1() * 8);
     }
 
     // clang-format off
