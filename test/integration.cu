@@ -41,7 +41,7 @@ int main(int argc, char const* const* argv) {
     for (double thresh: { 0.5, 0.75, 0.9 }) {
         Config cfg { .nxcorr_threshold = thresh,
                      .subpixel_step = std::nullopt,
-                     .mode = TransformMode::LIMITED,
+                     .mode = TransformMode::FULL,
                      .precision = Precision::SINGLE };
 
         for (auto variant: { SearchVariant(Variant::NoDuplicates {}),
