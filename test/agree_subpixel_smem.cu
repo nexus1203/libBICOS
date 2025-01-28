@@ -74,7 +74,7 @@ int main(void) {
         block = cuda::max_blocksize(kernel);
         grid = create_grid(block, randsize);
 
-        kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout_gmem, cv::cuda::PtrStepSz<double>());
+        kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout_gmem, cuda::PtrStepSz());
         assertCudaSuccess(cudaGetLastError());
     }
 
@@ -93,7 +93,7 @@ int main(void) {
         block = cuda::max_blocksize(smem_kernel);
         grid = create_grid(block, randsize);
 
-        smem_kernel<<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout_smem, cv::cuda::PtrStepSz<double>());
+        smem_kernel<<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout_smem, cuda::PtrStepSz());
         assertCudaSuccess(cudaGetLastError());
     }
 

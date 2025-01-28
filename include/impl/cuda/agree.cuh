@@ -19,22 +19,26 @@
 #pragma once
 
 #include "common.hpp"
-#include "impl/common.hpp"
 #include "compat.hpp"
+#include "impl/common.hpp"
+#include "impl/cuda/cutil.cuh"
 
 #include <opencv2/core/cuda/common.hpp>
 
 namespace BICOS::impl::cuda {
 
-enum class NXCVariant {
-    PLAIN, MINVAR
-};
+enum class NXCVariant { PLAIN, MINVAR };
 
 template<typename T, typename V>
 using corrfun = V (*)(const T*, const T*, size_t, V);
 
 template<NXCVariant VARIANT, typename T>
-__device__ __forceinline__ double nxcorrd(const T* __restrict__ pix0, const T* __restrict__ pix1, size_t n, [[maybe_unused]] double minvar) {
+__device__ __forceinline__ double nxcorrd(
+    const T* __restrict__ pix0,
+    const T* __restrict__ pix1,
+    size_t n,
+    [[maybe_unused]] double minvar
+) {
     double mean0 = 0.0, mean1 = 0.0;
     for (size_t i = 0; i < n; ++i) {
         mean0 = __dadd_rn(mean0, pix0[i]);
@@ -61,7 +65,12 @@ __device__ __forceinline__ double nxcorrd(const T* __restrict__ pix0, const T* _
 }
 
 template<NXCVariant VARIANT, typename T>
-__device__ __forceinline__ float nxcorrf(const T* __restrict__ pix0, const T* __restrict__ pix1, size_t n, [[maybe_unused]] float minvar) {
+__device__ __forceinline__ float nxcorrf(
+    const T* __restrict__ pix0,
+    const T* __restrict__ pix1,
+    size_t n,
+    [[maybe_unused]] float minvar
+) {
     float mean0 = 0.0f, mean1 = 0.0f;
     for (size_t i = 0; i < n; ++i) {
         mean0 = __fadd_rn(mean0, pix0[i]);
@@ -87,14 +96,27 @@ __device__ __forceinline__ float nxcorrf(const T* __restrict__ pix0, const T* __
     return covar / sqrtf(var0 * var1);
 }
 
+using agree_kernel_t = void (*)(
+    const cv::cuda::PtrStepSz<int16_t> raw_disp,
+    const void* _stacks,
+    size_t n,
+    double _min_nxc,
+    double _min_var,
+    float subpixel_step,
+    cv::cuda::PtrStepSz<float> out,
+    [[maybe_unused]] PtrStepSz _corrmap
+);
+
 template<typename TInput, typename TPrecision, NXCVariant VARIANT, bool CORRMAP>
 __global__ void agree_kernel(
     cv::cuda::PtrStepSz<int16_t> raw_disp,
-    const cv::cuda::PtrStepSz<TInput>* stacks,
+    const void* _stacks,
     size_t n,
-    TPrecision min_nxc,
-    TPrecision min_var,
-    [[maybe_unused]] cv::cuda::PtrStepSz<TPrecision> corrmap
+    double min_nxc,
+    double min_var,
+    [[maybe_unused]] float,
+    [[maybe_unused]] cv::cuda::PtrStepSz<float>,
+    [[maybe_unused]] PtrStepSz corrmap
 ) {
     const int col = blockIdx.x * blockDim.x + threadIdx.x;
     const int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -102,14 +124,14 @@ __global__ void agree_kernel(
     if (raw_disp.cols <= col || raw_disp.rows <= row)
         return;
 
-    int16_t &d = raw_disp(row, col);
+    int16_t& d = raw_disp(row, col);
 
     if (is_invalid(d))
         return;
 
     const int col1 = col - d;
 
-    if UNLIKELY(col1 < 0 || raw_disp.cols <= col1) {
+    if UNLIKELY (col1 < 0 || raw_disp.cols <= col1) {
         d = INVALID_DISP<int16_t>;
         return;
     }
@@ -117,6 +139,7 @@ __global__ void agree_kernel(
     TInput pix0[PIX_STACKSIZE], pix1[PIX_STACKSIZE];
 
     const cv::cuda::PtrStepSz<TInput>
+        *stacks = (const cv::cuda::PtrStepSz<TInput> *)_stacks,
         *stack0 = stacks,
         *stack1 = stacks + n;
 
@@ -136,7 +159,7 @@ __global__ void agree_kernel(
         nxc = nxcorrd<VARIANT>(pix0, pix1, n, min_var);
 
     if constexpr (CORRMAP)
-        corrmap(row, col) = nxc;
+        corrmap.as<TPrecision>()(row, col) = nxc;
 
     if (nxc < min_nxc)
         d = INVALID_DISP<int16_t>;
@@ -144,20 +167,22 @@ __global__ void agree_kernel(
 
 template<typename TInput, typename TPrecision, NXCVariant VARIANT, bool CORRMAP>
 __global__ void agree_subpixel_kernel(
-    const cv::cuda::PtrStepSz<int16_t> raw_disp,
-    const cv::cuda::PtrStepSz<TInput>* stacks,
+    cv::cuda::PtrStepSz<int16_t> _raw_disp,
+    const void* _stacks,
     size_t n,
-    TPrecision min_nxc,
-    TPrecision min_var,
+    double _min_nxc,
+    double _min_var,
     float subpixel_step,
     cv::cuda::PtrStepSz<float> out,
-    [[maybe_unused]] cv::cuda::PtrStepSz<TPrecision> corrmap
+    [[maybe_unused]] PtrStepSz _corrmap
 ) {
     const int col = blockIdx.x * blockDim.x + threadIdx.x;
     const int row = blockIdx.y * blockDim.y + threadIdx.y;
 
     if (out.cols <= col || out.rows <= row)
         return;
+
+    const cv::cuda::PtrStepSz<int16_t> raw_disp = _raw_disp;
 
     const int16_t d = __ldg(raw_disp.ptr(row) + col);
 
@@ -166,14 +191,19 @@ __global__ void agree_subpixel_kernel(
 
     const int col1 = col - d;
 
-    if UNLIKELY(col1 < 0 || out.cols <= col1)
+    if UNLIKELY (col1 < 0 || out.cols <= col1)
         return;
 
     TInput pix0[PIX_STACKSIZE], pix1[PIX_STACKSIZE];
 
     const cv::cuda::PtrStepSz<TInput>
+        *stacks = (const cv::cuda::PtrStepSz<TInput> *)_stacks,
         *stack0 = stacks,
         *stack1 = stacks + n;
+
+    const TPrecision min_nxc = _min_nxc, min_var = _min_var;
+
+    cv::cuda::PtrStepSz<TPrecision> corrmap = _corrmap.as<TPrecision>();
 
     for (size_t t = 0; t < n; ++t) {
         pix0[t] = __ldg(stack0[t].ptr(row) + col);
@@ -186,7 +216,7 @@ __global__ void agree_subpixel_kernel(
 
     TPrecision nxc;
 
-    if UNLIKELY(col1 == 0 || col1 == out.cols - 1) {
+    if UNLIKELY (col1 == 0 || col1 == out.cols - 1) {
         if constexpr (std::is_same_v<TPrecision, float>)
             nxc = nxcorrf<VARIANT>(pix0, pix1, n, min_var);
         else
@@ -249,13 +279,13 @@ __global__ void agree_subpixel_kernel(
 template<typename TInput, typename TPrecision, NXCVariant VARIANT, bool CORRMAP>
 __global__ void agree_subpixel_kernel_smem(
     const cv::cuda::PtrStepSz<int16_t> raw_disp,
-    const cv::cuda::PtrStepSz<TInput>* stacks,
+    const void* _stacks,
     size_t n,
-    TPrecision min_nxc,
+    double _min_nxc,
+    double _min_var,
     float subpixel_step,
-    TPrecision min_var,
     cv::cuda::PtrStepSz<float> out,
-    cv::cuda::PtrStepSz<TPrecision> corrmap
+    [[maybe_unused]] PtrStepSz _corrmap
 ) {
     const int col = blockIdx.x * blockDim.x + threadIdx.x;
     const int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -265,9 +295,16 @@ __global__ void agree_subpixel_kernel_smem(
 
     extern __shared__ char _rows[];
     TInput *row1 = (TInput*)_rows;
+
     const cv::cuda::PtrStepSz<TInput>
+        *stacks = (const cv::cuda::PtrStepSz<TInput> *)_stacks,
         *stack0 = stacks,
         *stack1 = stacks + n;
+
+    const TPrecision min_nxc = _min_nxc,
+                     min_var = _min_var;
+
+    cv::cuda::PtrStepSz<TPrecision> corrmap = _corrmap.as<TPrecision>();
 
     for (size_t c = threadIdx.x; c < out.cols; c += blockDim.x)
         for (size_t t = 0; t < n; ++t)

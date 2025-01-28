@@ -38,9 +38,9 @@ static auto select_bicos_kernel(SearchVariant variant, bool smem) {
     if (std::holds_alternative<Variant::Consistency>(variant)) {
         auto consistency = std::get<Variant::Consistency>(variant);
         if (consistency.no_dupes)
-            return smem
-                ? bicos_kernel_smem<TDescriptor, BICOSFLAGS_CONSISTENCY | BICOSFLAGS_NODUPES>
-                : bicos_kernel<TDescriptor, BICOSFLAGS_CONSISTENCY | BICOSFLAGS_NODUPES>;
+            return smem                                          ? bicos_kernel_smem < TDescriptor,
+                   BICOSFLAGS_CONSISTENCY | BICOSFLAGS_NODUPES > : bicos_kernel < TDescriptor,
+                   BICOSFLAGS_CONSISTENCY | BICOSFLAGS_NODUPES > ;
         else
             return smem ? bicos_kernel_smem<TDescriptor, BICOSFLAGS_CONSISTENCY>
                         : bicos_kernel<TDescriptor, BICOSFLAGS_CONSISTENCY>;
@@ -182,68 +182,35 @@ static void match_impl(
     // clang-format off
     // :(
 
-    auto invoke = [&](auto kernel, auto&&... args) {
-        auto block = max_blocksize(kernel);
-        auto grid  = create_grid(block, sz);
-        kernel<<<grid, block, 0, mainstream>>>(std::forward<decltype(args)>(args)...);
-    };
+    /*[[[cog
+    import cog
+    cog.outl('constexpr static agree_kernel_t agree_lut[2][2][2][2] = {')
+    for kernel in ['agree_kernel', 'agree_subpixel_kernel']:
+        cog.outl('\t{')
+        for corrmap in ['false', 'true']:
+            cog.outl('\t\t{')
+            for variant in ['NXCVariant::PLAIN', 'NXCVariant::MINVAR']:
+                cog.outl('\t\t\t{')
+                for precision in ['float', 'double']:
+                    cog.outl(f'\t\t\t\t{kernel}<TInput, {precision}, {variant}, {corrmap}>,')
+                cog.outl('\t\t\t},')
+            cog.outl('\t\t},')
+        cog.outl('\t\t},')
+    cog.outl('};')
+    ]]]*/
+    // [[[end]]]
 
-    if (subpixel_step.has_value()) {
+    if (subpixel_step.has_value())
         init_disparity<float>(out, sz);
-        if (corrmap) {
-            if (min_var.has_value()) {
-                if (precision == Precision::SINGLE)
-                    invoke(agree_subpixel_kernel<TInput, float, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, subpixel_step.value(), out, *corrmap);
-                else
-                    invoke(agree_subpixel_kernel<TInput, double, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, subpixel_step.value(), out, *corrmap);
-            } else {
-                if (precision == Precision::SINGLE)
-                    invoke(agree_subpixel_kernel<TInput, float, NXCVariant::PLAIN, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0f, subpixel_step.value(), out, *corrmap);
-                else
-                    invoke(agree_subpixel_kernel<TInput, double, NXCVariant::PLAIN, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0, subpixel_step.value(), out, *corrmap);
-            }
-        } else {
-            if (min_var.has_value()) {
-                if (precision == Precision::SINGLE)
-                    invoke(agree_subpixel_kernel<TInput, float, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, subpixel_step.value(), out, cv::cuda::PtrStepSz<float>());
-                else
-                    invoke(agree_subpixel_kernel<TInput, double, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, subpixel_step.value(), out, cv::cuda::PtrStepSz<double>());
-            } else {
-                if (precision == Precision::SINGLE)
-                    invoke(agree_subpixel_kernel<TInput, float, NXCVariant::PLAIN, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0f, subpixel_step.value(), out, cv::cuda::PtrStepSz<float>());
-                else
-                    invoke(agree_subpixel_kernel<TInput, double, NXCVariant::PLAIN, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0, subpixel_step.value(), out, cv::cuda::PtrStepSz<double>());
-            }
-        }
-    } else {
-        // working on bicos_disp
-        if (corrmap) {
-            if (min_var.has_value()) {
-                if (precision == Precision::SINGLE)
-                    invoke(agree_kernel<TInput, float, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, *corrmap);
-                else
-                    invoke(agree_kernel<TInput, double, NXCVariant::MINVAR, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, *corrmap);
-            } else {
-                if (precision == Precision::SINGLE)
-                    invoke(agree_kernel<TInput, float, NXCVariant::PLAIN, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0f, *corrmap);
-                else
-                    invoke(agree_kernel<TInput, double, NXCVariant::PLAIN, true>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0, *corrmap);
-            }
-        } else {
-            if (min_var.has_value()) {
-                if (precision == Precision::SINGLE)
-                    invoke(agree_kernel<TInput, float, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, cv::cuda::PtrStepSz<float>());
-                else
-                    invoke(agree_kernel<TInput, double, NXCVariant::MINVAR, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value() * n_images, cv::cuda::PtrStepSz<double>());
-            } else {
-                if (precision == Precision::SINGLE)
-                    invoke(agree_kernel<TInput, float, NXCVariant::PLAIN, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0f, cv::cuda::PtrStepSz<float>());
-                else
-                    invoke(agree_kernel<TInput, double, NXCVariant::PLAIN, false>, bicos_disp, ptrs_dev, n_images, min_nxc.value(), 0.0, cv::cuda::PtrStepSz<double>());
-            }
-        }
+
+    agree_kernel_t agree_kernel = agree_lut[subpixel_step.has_value()][corrmap != nullptr][min_var.has_value()][precision == Precision::DOUBLE];
+    block = max_blocksize(agree_kernel);
+    grid = create_grid(block, sz);
+
+    agree_kernel<<<grid, block, 0, mainstream>>>(bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value_or(0.0f) * n_images, subpixel_step.value_or(-1.0f), out, corrmap ? PtrStepSz(*corrmap) : PtrStepSz());
+
+    if (!subpixel_step.has_value())
         out = bicos_disp;
-    }
 
     // clang-format on
 

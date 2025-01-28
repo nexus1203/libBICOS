@@ -44,6 +44,8 @@ add_project_arguments(
     '--expt-relaxed-constexpr',
 language: 'cuda')
 
+cudasrcs = files()
+
 if impl == 'cpu'
     add_project_arguments('-DBICOS_CPU', language: 'cpp')
     srcs += files('src/impl/cpu.cpp')
@@ -51,7 +53,15 @@ elif impl == 'cuda'
     add_languages('cuda', native: false)
     add_project_arguments('-DBICOS_CUDA', language: ['cpp', 'cuda'])
     override_options += f'cuda_std=@cppver@'
-    srcs += files('src/impl/cuda.cu')
+    cog = find_program('cog', required: true)
+    cudasrcs += custom_target('cuda.cu',
+        output: 'cuda.cu',
+        input: 'src/impl/cuda.cu.in',
+        command: [cog, '-o', '@OUTPUT@', '@INPUT@']
+    )
+    cudasrcs += files('src/impl/cuda/cutil.cu')
+
+    srcs += cudasrcs
 
     has_builtin_uint128 = meson.get_compiler('cuda').compiles('''
         __device__ __uint128_t longlonglong() { return __uint128_t(0xBAADF00D); }
@@ -99,7 +109,7 @@ cli_tgt = executable(
 
 if impl == 'cuda'
     datdir = join_paths(meson.project_source_root(), 'data')
-    srcs = files('src/impl/cuda.cu', 'src/impl/cpu.cpp', 'src/fileutils.cpp', 'src/exception.cpp', 'src/formatable.cpp')
+    srcs = cudasrcs + files('src/impl/cpu.cpp', 'src/fileutils.cpp', 'src/exception.cpp', 'src/formatable.cpp')
     incls = [incls, include_directories('test/include')]
 
     depths = [32, 64]

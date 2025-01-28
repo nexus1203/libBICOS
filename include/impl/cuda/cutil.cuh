@@ -163,10 +163,11 @@ private:
     void* data;
 
 public:
+    PtrStepSz();
     PtrStepSz(cv::cuda::GpuMat mat);
     template<typename T>
-    cv::cuda::PtrStepSz<T> as() const {
-        return { rows, cols, data, step };
+    __device__ cv::cuda::PtrStepSz<T> as() const {
+        return { rows, cols, (T*)data, step };
     }
 };
 

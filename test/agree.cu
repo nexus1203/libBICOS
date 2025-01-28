@@ -90,7 +90,7 @@ int main(void) {
 
     float step = 0.25f;
 
-    kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout, cv::cuda::PtrStepSz<double>());
+    kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout, cuda::PtrStepSz());
 
     assertCudaSuccess(cudaGetLastError());
 
@@ -120,7 +120,7 @@ int main(void) {
     block = cuda::max_blocksize(kernel);
     grid = create_grid(block, randsize);
 
-    kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, minvar, cv::cuda::PtrStepSz<double>());
+    kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, minvar, -1.0f, cv::cuda::PtrStepSz<float>(), cuda::PtrStepSz());
 
     assertCudaSuccess(cudaGetLastError());
 
