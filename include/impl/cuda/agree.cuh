@@ -138,9 +138,7 @@ __global__ void agree_kernel(
 
     TInput pix0[PIX_STACKSIZE], pix1[PIX_STACKSIZE];
 
-    const GpuMatHeader
-        *stack0 = stacks,
-        *stack1 = stacks + n;
+    const GpuMatHeader *stack0 = stacks, *stack1 = stacks + n;
 
     for (size_t t = 0; t < n; ++t) {
         pix0[t] = load_datacache(stack0[t].ptr<TInput>(row) + col);
@@ -195,9 +193,7 @@ __global__ void agree_subpixel_kernel(
 
     TInput pix0[PIX_STACKSIZE], pix1[PIX_STACKSIZE];
 
-    const GpuMatHeader
-        *stack0 = stacks,
-        *stack1 = stacks + n;
+    const GpuMatHeader *stack0 = stacks, *stack1 = stacks + n;
 
     for (size_t t = 0; t < n; ++t) {
         pix0[t] = load_datacache(stack0[t].ptr<TInput>(row) + col);
@@ -265,120 +261,6 @@ __global__ void agree_subpixel_kernel(
 
         // larger x -> further to the right -> less disparity
         out(row, col) = d - best_x;
-
-        // clang-format on 
-    }
-}
-
-template<typename TInput, typename TPrecision, NXCVariant VARIANT, bool CORRMAP>
-__global__ void agree_subpixel_kernel_smem(
-    cv::cuda::PtrStepSz<int16_t> _raw_disp,
-    const GpuMatHeader* stacks,
-    size_t n,
-    double min_nxc,
-    double min_var,
-    float subpixel_step,
-    cv::cuda::PtrStepSz<float> out,
-    [[maybe_unused]] GpuMatHeader corrmap
-) {
-    const int col = blockIdx.x * blockDim.x + threadIdx.x;
-    const int row = blockIdx.y * blockDim.y + threadIdx.y;
-
-    if (out.rows <= row)
-        return;
-
-    extern __shared__ char _rows[];
-    TInput *row1 = (TInput*)_rows;
-
-    const GpuMatHeader
-        *stack0 = stacks,
-        *stack1 = stack0 + n;
-
-    for (size_t c = threadIdx.x; c < out.cols; c += blockDim.x)
-        for (size_t t = 0; t < n; ++t)
-            row1[c * n + t] = stack1[t].at<TInput>(row, c);
-
-    if (out.cols <= col)
-        return;
-
-    __syncthreads();
-
-    const cv::cuda::PtrStepSz<int16_t> raw_disp = _raw_disp;
-    const int16_t d = raw_disp(row, col);
-
-    if (is_invalid(d))
-        return;
-
-    const int col1 = col - d;
-
-    if UNLIKELY(col1 < 0 || out.cols <= col1)
-        return;
-
-    TInput pix0[PIX_STACKSIZE];
-    for (size_t t = 0; t < n; ++t) {
-        pix0[t] = load_datacache(stack0[t].ptr<TInput>(row) + col);
-#ifdef BICOS_DEBUG
-        if (t >= PIX_STACKSIZE)
-            __trap();
-#endif
-    }
-
-    TPrecision nxc;
-
-    if UNLIKELY(col1 == 0 || col1 == out.cols - 1) {
-        if constexpr (std::is_same_v<TPrecision, float>)
-            nxc = nxcorrf<VARIANT>(pix0, row1 + n * col1, n, min_var);
-        else
-            nxc = nxcorrd<VARIANT>(pix0, row1 + n * col1, n, min_var);
-
-        if constexpr (CORRMAP)
-            corrmap.at<TPrecision>(row, col) = nxc;
-
-        if (nxc < min_nxc)
-            return;
-
-        out(row, col) = d;
-    } else {
-        TInput interp[PIX_STACKSIZE];
-        float a[PIX_STACKSIZE], b[PIX_STACKSIZE], c[PIX_STACKSIZE];
-
-        // clang-format off
-
-        for (size_t t = 0; t < n; ++t) {
-            TInput y0 = row1[n * col1 - 1 + t], 
-                   y1 = row1[n * col1     + t],
-                   y2 = row1[n * col1 + 1 + t];
-
-            a[t] = 0.5f * ( y0 - 2.0f * y1 + y2);
-            b[t] = 0.5f * (-y0             + y2);
-            c[t] = y1;
-        }
-
-        float best_x = 0.0f;
-        TPrecision best_nxc = -1.0;
-
-        for (float x = -1.0f; x <= 1.0f; x += subpixel_step) {
-            for (size_t t = 0; t < n; ++t)
-                interp[t] = (TInput)__float2int_rn(a[t] * x * x + b[t] * x + c[t]);
-
-            if constexpr (std::is_same_v<TPrecision, float>)
-                nxc = nxcorrf<VARIANT>(pix0, interp, n, min_var);
-            else
-                nxc = nxcorrd<VARIANT>(pix0, interp, n, min_var);
-
-            if (best_nxc < nxc) {
-                best_x = x;
-                best_nxc = nxc;
-            }
-        }
-
-        if constexpr (CORRMAP)
-            corrmap.at<TPrecision>(row, col) = best_nxc;
-
-        if (best_nxc < min_nxc)
-            return;
-
-        out(row, col) = d + best_x;
 
         // clang-format on 
     }

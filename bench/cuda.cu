@@ -179,58 +179,6 @@ void bench_agree_subpixel_kernel(benchmark::State& state) {
     assertCudaSuccess(cudaGetLastError());
 }
 
-template<typename TInput>
-void bench_agree_subpixel_kernel_smem(benchmark::State& state) {
-    cv::setRNGSeed(seed);
-    const int n = 10;
-
-    cv::Mat_<int16_t> randdisp(size);
-    cv::randu(randdisp, -1, size.width);
-    cv::cuda::GpuMat randdisp_dev(randdisp);
-
-    std::vector<cv::cuda::GpuMat> _devinput;
-    std::vector<cuda::GpuMatHeader> devinput;
-
-    for (int i = 0; i < 2 * n; ++i) {
-        cv::Mat_<TInput> randmat(size);
-        cv::randu(randmat, 0, std::numeric_limits<TInput>::max());
-
-        cv::cuda::GpuMat randmat_dev(randmat);
-
-        _devinput.push_back(randmat_dev);
-        devinput.push_back(randmat_dev);
-    }
-
-    cuda::RegisteredPtr devptr(devinput.data(), 2 * n, true);
-
-    cv::cuda::GpuMat out(size, cv::DataType<float>::type);
-
-    size_t smem_size = size.width * n * sizeof(TInput);
-
-    bool smem_fits = cudaSuccess == cudaFuncSetAttribute(
-        cuda::agree_subpixel_kernel_smem<TInput, double, cuda::NXCVariant::MINVAR, false>,
-        cudaFuncAttributeMaxDynamicSharedMemorySize,
-        smem_size
-    );
-
-    if (!smem_fits) {
-        cudaGetLastError();
-        state.SkipWithMessage("smem too small");
-        return;
-    }
-
-    const dim3 block = cuda::max_blocksize(cuda::agree_subpixel_kernel_smem<TInput, double, cuda::NXCVariant::MINVAR, false>, smem_size);
-    const dim3 grid = create_grid(block, size);
-
-    for (auto _: state) {
-        cuda::agree_subpixel_kernel_smem<TInput, double, cuda::NXCVariant::MINVAR, false>
-            <<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, minvar, out, cuda::GpuMatHeader());
-        cudaDeviceSynchronize();
-    }
-
-    assertCudaSuccess(cudaGetLastError());
-}
-
 template<typename T>
 void randomize_seeded(cpu::StepBuf<T>& sb) {
     static thread_local std::independent_bits_engine<std::default_random_engine, CHAR_BIT, uint8_t>
@@ -402,8 +350,6 @@ BENCHMARK(bench_agree_kernel<uint8_t>);
 BENCHMARK(bench_agree_kernel<uint16_t>);
 BENCHMARK(bench_agree_subpixel_kernel<uint8_t>);
 BENCHMARK(bench_agree_subpixel_kernel<uint16_t>);
-BENCHMARK(bench_agree_subpixel_kernel_smem<uint8_t>);
-BENCHMARK(bench_agree_subpixel_kernel_smem<uint16_t>);
 
 BENCHMARK(bench_bicos_kernel<uint32_t, BICOSFLAGS_NODUPES>);
 BENCHMARK(bench_bicos_kernel_smem<uint32_t, BICOSFLAGS_NODUPES>);

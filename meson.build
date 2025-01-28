@@ -155,17 +155,6 @@ if impl == 'cuda'
                 )
             )            
         endforeach
-        testname = f'agree_subpixel_smem_@input_depth@'
-        test(testname,
-            executable('test_' + testname,
-                sources: srcs + f'test/agree_subpixel_smem.cu',
-                dependencies: deps,
-                include_directories: incls,
-                cuda_args: ['-DBICOS_CUDA', f'-DINPUT_TYPE=uint@input_depth@_t'],
-                cpp_args: '-DBICOS_CPU',
-                override_options: override_options
-            )
-        )
     endforeach
 
     foreach descriptor_depth : depths
