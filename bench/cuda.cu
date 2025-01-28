@@ -27,6 +27,7 @@
 #include "impl/cuda/agree.cuh"
 #include "impl/cuda/bicos.cuh"
 #include "impl/cuda/cutil.cuh"
+#include "impl/cuda/bitfield.cuh"
 #include "impl/cuda/descriptor_transform.cuh"
 #include "opencv2/core.hpp"
 #include "opencv2/core/traits.hpp"
@@ -73,6 +74,26 @@ void bench_nxcorr_subroutine(benchmark::State& state) {
         nxcorr_kernel<TPrecision, VARIANT><<<1, 1>>>(a, b, sizeof(_a), out, minvar);
         cudaDeviceSynchronize();
     }
+}
+
+template<typename T>
+__global__ void load_datacache_kernel(const T* __restrict__ src, T* __restrict__ dst) {
+    *dst = cuda::load_datacache(src);
+}
+
+template<typename T>
+void bench_load_datacache(benchmark::State &state) {
+    T *a, *b;
+    cudaMalloc(&a, 1);
+    cudaMalloc(&b, 1);
+
+    for (auto _ : state) {
+        load_datacache_kernel<T><<<1, 1>>>(a, b);
+        cudaDeviceSynchronize();
+    }
+
+    benchmark::DoNotOptimize(a);
+    benchmark::DoNotOptimize(b);
 }
 
 template<typename TInput>
@@ -364,6 +385,15 @@ BENCHMARK(bench_nxcorr_subroutine<double, cuda::NXCVariant::MINVAR>)
     ->Repetitions(10)
     ->ReportAggregatesOnly(true);
 BENCHMARK(bench_nxcorr_subroutine<double, cuda::NXCVariant::PLAIN>)
+    ->Repetitions(10)
+    ->ReportAggregatesOnly(true);
+
+#ifdef BICOS_CUDA_HAS_UINT128
+BENCHMARK(bench_load_datacache<uint128_t>)
+    ->Repetitions(10)
+    ->ReportAggregatesOnly(true);
+#endif
+BENCHMARK(bench_load_datacache<cuda::varuint_<256>>)
     ->Repetitions(10)
     ->ReportAggregatesOnly(true);
 
