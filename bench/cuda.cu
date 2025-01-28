@@ -343,7 +343,7 @@ void bench_integration(benchmark::State& state) {
 
     Config c { .nxcorr_threshold = thresh,
                .subpixel_step = step == 0.0f ? std::nullopt : std::optional(step),
-               .mode = TransformMode::LIMITED };
+               .mode = TransformMode::FULL };
 
     cv::cuda::GpuMat out;
     out.create(ldev.front().size(), step == 0.0f ? CV_16SC1 : CV_32FC1);
@@ -421,7 +421,7 @@ BENCHMARK(bench_descriptor_transform_kernel<uint16_t, uint128_t, TransformMode::
 
 BENCHMARK(bench_integration)
     ->ArgsProduct({
-        { 2, 8, 14, 20 }, // n
+        { 6, 8, 12, 16 }, // n
         { 0, 25, 20, 15, 10 } // step * 100
     });
 
