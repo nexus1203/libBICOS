@@ -35,6 +35,10 @@ int main(int argc, char const* const* argv) {
     std::vector<cv::cuda::GpuMat> ldev, rdev;
 
     read_sequence(argv[1], argv[2], lseq, rseq, true);
+
+    lseq.resize(16);
+    rseq.resize(16);
+
     sort_sequence_to_stack(lseq, rseq, lhost, rhost);
     matvec_to_gpu(lhost, rhost, ldev, rdev);
 
