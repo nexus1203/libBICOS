@@ -136,7 +136,7 @@ __device__ __forceinline__ varuint_<N> load_datacache(const varuint_<N>* p) {
         *dst = __ldg(src);
     }
 
-    return ret;
+    return std::move(ret);
 }
 
 template<typename T>
@@ -153,5 +153,19 @@ void init_disparity(
     map.create(size, cv::DataType<T>::type);
     map.setTo(INVALID_DISP<T>, stream);
 }
+
+class PtrStepSz {
+private:
+    int rows, cols;
+    size_t step;
+    void* data;
+
+public:
+    PtrStepSz(cv::cuda::GpuMat mat);
+    template<typename T>
+    cv::cuda::PtrStepSz<T> as() const {
+        return { rows, cols, data, step };
+    }
+};
 
 } // namespace BICOS::impl::cuda
