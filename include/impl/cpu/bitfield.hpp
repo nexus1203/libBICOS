@@ -21,6 +21,8 @@
 #include <bitset>
 #include <type_traits>
 
+#include "common.hpp"
+
 namespace BICOS::impl::cpu {
 
 template<typename T>
@@ -38,10 +40,10 @@ struct Bitfield {
 #ifdef BICOS_DEBUG
         if constexpr (is_bitset<T>::value) {
             if (v.size() <= i)
-                throw std::overflow_error("Bitfield overflow");
+                throw Exception("Bitfield overflow");
         } else {
             if (sizeof(T) * 8 <= i)
-                throw std::overflow_error("Bitfield overflow");
+                throw Exception("Bitfield overflow");
         }
 #endif
         if (value) {

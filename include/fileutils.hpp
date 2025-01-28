@@ -49,7 +49,7 @@ void save_pointcloud(
     std::filesystem::path outfile
 ) {
     if (points.size() != disparity.size())
-        throw std::invalid_argument("save_pointcloud: invalid sizes");
+        throw Exception("save_pointcloud: invalid sizes");
 
     std::ofstream xyz(outfile.replace_extension("xyz"));
 

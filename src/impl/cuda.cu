@@ -262,6 +262,12 @@ void match(
     const int depth = _stack0.front().depth();
     const cv::Size sz = _stack0.front().size();
 
+    if (n < 2)
+        throw Exception("need at least two images");
+
+    if (depth != CV_8UC1 && depth != CV_16UC1)
+        throw Exception("bad input depths, only CV_8UC1 and CV_16UC1 are supported");
+
     // clang-format off
 
     int required_bits = cfg.mode == TransformMode::FULL

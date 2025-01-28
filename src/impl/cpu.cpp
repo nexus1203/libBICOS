@@ -104,10 +104,10 @@ void match(
     const int depth = _stack0.front().depth();
 
     if (n < 2)
-        throw std::invalid_argument("need at least two images");
+        throw Exception("need at least two images");
 
     if (depth != CV_8UC1 && depth != CV_16UC1)
-        throw std::invalid_argument("bad input depths, only CV_8UC1 and CV_16UC1 are supported");
+        throw Exception("bad input depths, only CV_8UC1 and CV_16UC1 are supported");
 
     cv::Mat stack0, stack1;
     cv::merge(_stack0, stack0);
