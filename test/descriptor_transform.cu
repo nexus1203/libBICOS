@@ -39,7 +39,7 @@ int main(void) {
     cv::Mat hoststack;
     std::vector<cv::Mat_<INPUT_TYPE>> rand_host;
     std::vector<cv::cuda::GpuMat> _rand_dev;
-    std::vector<cv::cuda::PtrStepSz<INPUT_TYPE>> rand_dev;
+    std::vector<cuda::GpuMatHeader> rand_dev;
 
     const cv::Size randsize(randint(256, 1028), randint(128, 512));
 

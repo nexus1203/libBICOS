@@ -39,7 +39,7 @@ int main(void) {
 
     std::vector<cv::cuda::GpuMat> _devinput;
     std::vector<cv::Mat> _hostinput;
-    std::vector<cv::cuda::PtrStepSz<INPUT_TYPE>> devinput;
+    std::vector<cuda::GpuMatHeader> devinput;
     cv::Mat hinput_l, hinput_r;
 
     dim3 grid, block;
@@ -120,7 +120,7 @@ int main(void) {
     block = cuda::max_blocksize(kernel);
     grid = create_grid(block, randsize);
 
-    kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, minvar, -1.0f, cv::cuda::PtrStepSz<float>(), cuda::PtrStepSz());
+    kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, minvar, -1.0f, cv::cuda::PtrStepSz<float>(), cuda::GpuMatHeader());
 
     assertCudaSuccess(cudaGetLastError());
 

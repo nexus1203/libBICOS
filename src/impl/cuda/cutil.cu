@@ -20,16 +20,24 @@
 
 namespace BICOS::impl::cuda {
 
-PtrStepSz::PtrStepSz():
-    rows(0),
-    cols(0),
-    data(nullptr),
-    step(0) {}
+GpuMatHeader::GpuMatHeader(): rows(0), cols(0), data(nullptr), step(0) {}
 
-PtrStepSz::PtrStepSz(cv::cuda::GpuMat mat):
+GpuMatHeader::GpuMatHeader(const cv::cuda::GpuMat &mat):
     rows(mat.rows),
     cols(mat.cols),
     data(mat.data),
     step(mat.step) {}
 
+GpuMatHeader::GpuMatHeader(cv::cuda::GpuMat* ptr) {
+    if (ptr) {
+        rows = ptr->rows;
+        cols = ptr->cols;
+        data = ptr->data;
+        step = ptr->step;
+    } else {
+        rows = cols = step = 0;
+        data = nullptr;
+    }
 }
+
+} // namespace BICOS::impl::cuda

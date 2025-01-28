@@ -98,25 +98,25 @@ __device__ __forceinline__ float nxcorrf(
 
 using agree_kernel_t = void (*)(
     const cv::cuda::PtrStepSz<int16_t> raw_disp,
-    const void* _stacks,
+    const GpuMatHeader* _stacks,
     size_t n,
-    double _min_nxc,
-    double _min_var,
+    double min_nxc,
+    double min_var,
     float subpixel_step,
     cv::cuda::PtrStepSz<float> out,
-    [[maybe_unused]] PtrStepSz _corrmap
+    [[maybe_unused]] GpuMatHeader _corrmap
 );
 
 template<typename TInput, typename TPrecision, NXCVariant VARIANT, bool CORRMAP>
 __global__ void agree_kernel(
     cv::cuda::PtrStepSz<int16_t> raw_disp,
-    const void* _stacks,
+    const GpuMatHeader* stacks,
     size_t n,
     double min_nxc,
     double min_var,
     [[maybe_unused]] float,
     [[maybe_unused]] cv::cuda::PtrStepSz<float>,
-    [[maybe_unused]] PtrStepSz corrmap
+    [[maybe_unused]] GpuMatHeader corrmap
 ) {
     const int col = blockIdx.x * blockDim.x + threadIdx.x;
     const int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -138,14 +138,13 @@ __global__ void agree_kernel(
 
     TInput pix0[PIX_STACKSIZE], pix1[PIX_STACKSIZE];
 
-    const cv::cuda::PtrStepSz<TInput>
-        *stacks = (const cv::cuda::PtrStepSz<TInput> *)_stacks,
+    const GpuMatHeader
         *stack0 = stacks,
         *stack1 = stacks + n;
 
     for (size_t t = 0; t < n; ++t) {
-        pix0[t] = __ldg(stack0[t].ptr(row) + col);
-        pix1[t] = __ldg(stack1[t].ptr(row) + col1);
+        pix0[t] = load_datacache(stack0[t].ptr<TInput>(row) + col);
+        pix1[t] = load_datacache(stack1[t].ptr<TInput>(row) + col1);
 #ifdef BICOS_DEBUG
         if (t >= PIX_STACKSIZE)
             __trap();
@@ -159,7 +158,7 @@ __global__ void agree_kernel(
         nxc = nxcorrd<VARIANT>(pix0, pix1, n, min_var);
 
     if constexpr (CORRMAP)
-        corrmap.as<TPrecision>()(row, col) = nxc;
+        corrmap.at<TPrecision>(row, col) = nxc;
 
     if (nxc < min_nxc)
         d = INVALID_DISP<int16_t>;
@@ -168,13 +167,13 @@ __global__ void agree_kernel(
 template<typename TInput, typename TPrecision, NXCVariant VARIANT, bool CORRMAP>
 __global__ void agree_subpixel_kernel(
     cv::cuda::PtrStepSz<int16_t> _raw_disp,
-    const void* _stacks,
+    const GpuMatHeader* stacks,
     size_t n,
-    double _min_nxc,
-    double _min_var,
+    double min_nxc,
+    double min_var,
     float subpixel_step,
     cv::cuda::PtrStepSz<float> out,
-    [[maybe_unused]] PtrStepSz _corrmap
+    [[maybe_unused]] GpuMatHeader corrmap
 ) {
     const int col = blockIdx.x * blockDim.x + threadIdx.x;
     const int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -184,7 +183,7 @@ __global__ void agree_subpixel_kernel(
 
     const cv::cuda::PtrStepSz<int16_t> raw_disp = _raw_disp;
 
-    const int16_t d = __ldg(raw_disp.ptr(row) + col);
+    const int16_t d = load_datacache(raw_disp.ptr(row) + col);
 
     if (is_invalid(d))
         return;
@@ -196,18 +195,13 @@ __global__ void agree_subpixel_kernel(
 
     TInput pix0[PIX_STACKSIZE], pix1[PIX_STACKSIZE];
 
-    const cv::cuda::PtrStepSz<TInput>
-        *stacks = (const cv::cuda::PtrStepSz<TInput> *)_stacks,
+    const GpuMatHeader
         *stack0 = stacks,
         *stack1 = stacks + n;
 
-    const TPrecision min_nxc = _min_nxc, min_var = _min_var;
-
-    cv::cuda::PtrStepSz<TPrecision> corrmap = _corrmap.as<TPrecision>();
-
     for (size_t t = 0; t < n; ++t) {
-        pix0[t] = __ldg(stack0[t].ptr(row) + col);
-        pix1[t] = __ldg(stack1[t].ptr(row) + col1);
+        pix0[t] = load_datacache(stack0[t].ptr<TInput>(row) + col);
+        pix1[t] = load_datacache(stack1[t].ptr<TInput>(row) + col1);
 #ifdef BICOS_DEBUG
         if (t >= PIX_STACKSIZE)
             __trap();
@@ -223,7 +217,7 @@ __global__ void agree_subpixel_kernel(
             nxc = nxcorrd<VARIANT>(pix0, pix1, n, min_var);
 
         if constexpr (CORRMAP)
-            corrmap(row, col) = nxc;
+            corrmap.at<TPrecision>(row, col) = nxc;
 
         if (nxc < min_nxc)
             return;
@@ -236,9 +230,9 @@ __global__ void agree_subpixel_kernel(
         // clang-format off
 
         for (size_t t = 0; t < n; ++t) {
-            TInput y0 = __ldg(stack1[t].ptr(row) + col1 - 1),
+            TInput y0 = load_datacache(stack1[t].ptr<TInput>(row) + col1 - 1),
                    y1 = pix1[t],
-                   y2 = __ldg(stack1[t].ptr(row) + col1 + 1);
+                   y2 = load_datacache(stack1[t].ptr<TInput>(row) + col1 + 1);
 
             a[t] = 0.5f * ( y0 - 2.0f * y1 + y2);
             b[t] = 0.5f * (-y0             + y2);
@@ -264,7 +258,7 @@ __global__ void agree_subpixel_kernel(
         }
 
         if constexpr (CORRMAP)
-            corrmap(row, col) = best_nxc;
+            corrmap.at<TPrecision>(row, col) = best_nxc;
 
         if (best_nxc < min_nxc)
             return;
@@ -278,14 +272,14 @@ __global__ void agree_subpixel_kernel(
 
 template<typename TInput, typename TPrecision, NXCVariant VARIANT, bool CORRMAP>
 __global__ void agree_subpixel_kernel_smem(
-    const cv::cuda::PtrStepSz<int16_t> raw_disp,
-    const void* _stacks,
+    cv::cuda::PtrStepSz<int16_t> _raw_disp,
+    const GpuMatHeader* stacks,
     size_t n,
-    double _min_nxc,
-    double _min_var,
+    double min_nxc,
+    double min_var,
     float subpixel_step,
     cv::cuda::PtrStepSz<float> out,
-    [[maybe_unused]] PtrStepSz _corrmap
+    [[maybe_unused]] GpuMatHeader corrmap
 ) {
     const int col = blockIdx.x * blockDim.x + threadIdx.x;
     const int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -296,25 +290,20 @@ __global__ void agree_subpixel_kernel_smem(
     extern __shared__ char _rows[];
     TInput *row1 = (TInput*)_rows;
 
-    const cv::cuda::PtrStepSz<TInput>
-        *stacks = (const cv::cuda::PtrStepSz<TInput> *)_stacks,
+    const GpuMatHeader
         *stack0 = stacks,
-        *stack1 = stacks + n;
-
-    const TPrecision min_nxc = _min_nxc,
-                     min_var = _min_var;
-
-    cv::cuda::PtrStepSz<TPrecision> corrmap = _corrmap.as<TPrecision>();
+        *stack1 = stack0 + n;
 
     for (size_t c = threadIdx.x; c < out.cols; c += blockDim.x)
         for (size_t t = 0; t < n; ++t)
-            row1[c * n + t] = stack1[t](row, c);
+            row1[c * n + t] = stack1[t].at<TInput>(row, c);
 
     if (out.cols <= col)
         return;
 
     __syncthreads();
 
+    const cv::cuda::PtrStepSz<int16_t> raw_disp = _raw_disp;
     const int16_t d = raw_disp(row, col);
 
     if (is_invalid(d))
@@ -327,7 +316,7 @@ __global__ void agree_subpixel_kernel_smem(
 
     TInput pix0[PIX_STACKSIZE];
     for (size_t t = 0; t < n; ++t) {
-        pix0[t] = __ldg(stack0[t].ptr(row) + col);
+        pix0[t] = load_datacache(stack0[t].ptr<TInput>(row) + col);
 #ifdef BICOS_DEBUG
         if (t >= PIX_STACKSIZE)
             __trap();
@@ -343,7 +332,7 @@ __global__ void agree_subpixel_kernel_smem(
             nxc = nxcorrd<VARIANT>(pix0, row1 + n * col1, n, min_var);
 
         if constexpr (CORRMAP)
-            corrmap(row, col) = nxc;
+            corrmap.at<TPrecision>(row, col) = nxc;
 
         if (nxc < min_nxc)
             return;
@@ -384,7 +373,7 @@ __global__ void agree_subpixel_kernel_smem(
         }
 
         if constexpr (CORRMAP)
-            corrmap(row, col) = best_nxc;
+            corrmap.at<TPrecision>(row, col) = best_nxc;
 
         if (best_nxc < min_nxc)
             return;

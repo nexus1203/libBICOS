@@ -61,16 +61,18 @@ private:
 
 public:
     RegisteredPtr(T* phost, size_t n = 1, bool read_only = false): _phost(phost) {
-        int read_only_supported;
+        static thread_local int read_only_supported = -1;
         unsigned int flags = cudaHostRegisterMapped;
 
         if (read_only) {
-            cudaDeviceGetAttribute(
-                &read_only_supported,
-                cudaDevAttrHostRegisterReadOnlySupported,
-                0
-            );
-            if (read_only_supported)
+            if (read_only_supported == -1) {
+                cudaDeviceGetAttribute(
+                    &read_only_supported,
+                    cudaDevAttrHostRegisterReadOnlySupported,
+                    0
+                );
+            }
+            if (read_only_supported == 1)
                 flags |= cudaHostRegisterReadOnly;
         }
 
@@ -156,18 +158,33 @@ void init_disparity(
     map.setTo(INVALID_DISP<T>, stream);
 }
 
-class PtrStepSz {
+class GpuMatHeader {
 private:
     int rows, cols;
     size_t step;
     void* data;
 
 public:
-    PtrStepSz();
-    PtrStepSz(cv::cuda::GpuMat mat);
+    GpuMatHeader();
+    GpuMatHeader(const cv::cuda::GpuMat &mat);
+    GpuMatHeader(cv::cuda::GpuMat* ptr);
+
     template<typename T>
-    __device__ cv::cuda::PtrStepSz<T> as() const {
-        return { rows, cols, (T*)data, step };
+    __device__ __forceinline__ T* ptr(int y = 0) {
+        return (T*)(((uint8_t*)data) + y * step);
+    }
+    template<typename T>
+    __device__ __forceinline__ const T* ptr(int y = 0) const {
+        return (const T*)(((const uint8_t*)data) + y * step);
+    }
+
+    template<typename T>
+    __device__ __forceinline__ T& at(int y, int x) {
+        return ptr<T>(y)[x];
+    }
+    template<typename T>
+    __device__ __forceinline__ const T& at(int y, int x) const {
+        return ptr<T>(y)[x];
     }
 };
 

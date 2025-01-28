@@ -33,7 +33,7 @@ int main(void) {
     const cv::Size randsize(randint(512, 2048), randint(256, 1024));
 
     std::vector<cv::cuda::GpuMat> _devinput;
-    std::vector<cv::cuda::PtrStepSz<INPUT_TYPE>> devinput;
+    std::vector<cuda::GpuMatHeader> devinput;
 
     for (int i = 0; i < 2 * n; ++i) {
         cv::Mat_<INPUT_TYPE> randmat(randsize);
@@ -74,7 +74,7 @@ int main(void) {
         block = cuda::max_blocksize(kernel);
         grid = create_grid(block, randsize);
 
-        kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout_gmem, cuda::PtrStepSz());
+        kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout_gmem, cuda::GpuMatHeader());
         assertCudaSuccess(cudaGetLastError());
     }
 
@@ -93,7 +93,7 @@ int main(void) {
         block = cuda::max_blocksize(smem_kernel);
         grid = create_grid(block, randsize);
 
-        smem_kernel<<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout_smem, cuda::PtrStepSz());
+        smem_kernel<<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout_smem, cuda::GpuMatHeader());
         assertCudaSuccess(cudaGetLastError());
     }
 

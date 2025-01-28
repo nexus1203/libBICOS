@@ -102,7 +102,7 @@ void bench_agree_kernel(benchmark::State& state) {
     const int n = 10;
 
     std::vector<cv::cuda::GpuMat> _devinput;
-    std::vector<cv::cuda::PtrStepSz<TInput>> devinput;
+    std::vector<cuda::GpuMatHeader> devinput;
 
     for (int i = 0; i < 2 * n; ++i) {
         cv::Mat_<TInput> randmat(size);
@@ -134,7 +134,7 @@ void bench_agree_kernel(benchmark::State& state) {
         state.ResumeTiming();
 
         cuda::agree_kernel<TInput, double, cuda::NXCVariant::MINVAR, false>
-            <<<grid, block>>>(randdisp_dev, devptr, n, thresh, minvar, -1.0f, cv::cuda::PtrStepSz<float>(), cuda::PtrStepSz());
+            <<<grid, block>>>(randdisp_dev, devptr, n, thresh, minvar, -1.0f, cv::cuda::PtrStepSz<float>(), cuda::GpuMatHeader());
         cudaDeviceSynchronize();
     }
 
@@ -151,7 +151,7 @@ void bench_agree_subpixel_kernel(benchmark::State& state) {
     cv::cuda::GpuMat randdisp_dev(randdisp);
 
     std::vector<cv::cuda::GpuMat> _devinput;
-    std::vector<cv::cuda::PtrStepSz<TInput>> devinput;
+    std::vector<cuda::GpuMatHeader> devinput;
 
     for (int i = 0; i < 2 * n; ++i) {
         cv::Mat_<TInput> randmat(size);
@@ -172,7 +172,7 @@ void bench_agree_subpixel_kernel(benchmark::State& state) {
 
     for (auto _: state) {
         cuda::agree_subpixel_kernel<TInput, double, cuda::NXCVariant::MINVAR, false>
-            <<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, out, cuda::PtrStepSz());
+            <<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, out, cuda::GpuMatHeader());
         cudaDeviceSynchronize();
     }
 
@@ -189,7 +189,7 @@ void bench_agree_subpixel_kernel_smem(benchmark::State& state) {
     cv::cuda::GpuMat randdisp_dev(randdisp);
 
     std::vector<cv::cuda::GpuMat> _devinput;
-    std::vector<cv::cuda::PtrStepSz<TInput>> devinput;
+    std::vector<cuda::GpuMatHeader> devinput;
 
     for (int i = 0; i < 2 * n; ++i) {
         cv::Mat_<TInput> randmat(size);
@@ -224,7 +224,7 @@ void bench_agree_subpixel_kernel_smem(benchmark::State& state) {
 
     for (auto _: state) {
         cuda::agree_subpixel_kernel_smem<TInput, double, cuda::NXCVariant::MINVAR, false>
-            <<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, minvar, out, cuda::PtrStepSz());
+            <<<grid, block, smem_size>>>(randdisp_dev, devptr, n, thresh, step, minvar, out, cuda::GpuMatHeader());
         cudaDeviceSynchronize();
     }
 
@@ -315,7 +315,7 @@ void bench_descriptor_transform_kernel(benchmark::State& state) {
     int n = mode == TransformMode::FULL ? int((2 + std::sqrt(4 - 4 * ( 3 - bits ))) / 2.0) : (bits + 7) / 4;
 
     std::vector<cv::cuda::GpuMat> _devinput;
-    std::vector<cv::cuda::PtrStepSz<TInput>> devinput;
+    std::vector<cuda::GpuMatHeader> devinput;
 
     for (int i = 0; i < n; ++i) {
         cv::Mat_<TInput> randmat(size);

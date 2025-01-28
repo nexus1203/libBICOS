@@ -37,7 +37,7 @@ int main(int argc, char const* const* argv) {
     std::vector<SequenceEntry> lseq, rseq;
     std::vector<cv::Mat> lhost, rhost;
     std::vector<cv::cuda::GpuMat> _ldev, _rdev;
-    std::vector<cv::cuda::PtrStepSz<uint8_t>> dev;
+    std::vector<cuda::GpuMatHeader> dev;
 
     read_sequence(argv[1], argv[2], lseq, rseq, true);
     sort_sequence_to_stack(lseq, rseq, lhost, rhost);
