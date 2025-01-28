@@ -90,7 +90,7 @@ int main(void) {
 
     float step = 0.25f;
 
-    kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout, cuda::PtrStepSz());
+    kernel<<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, devout, cuda::GpuMatHeader());
 
     assertCudaSuccess(cudaGetLastError());
 

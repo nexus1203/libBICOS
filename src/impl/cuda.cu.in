@@ -67,7 +67,7 @@ static void match_impl(
     cv::cuda::GpuMat* corrmap,
     cv::cuda::Stream& _stream
 ) {
-    std::vector<PtrStepSz> ptrs_host(2 * n_images);
+    std::vector<GpuMatHeader> ptrs_host(2 * n_images);
 
     for (size_t i = 0; i < n_images; ++i) {
         ptrs_host[i] = _stack0[i];
@@ -207,7 +207,7 @@ static void match_impl(
     block = max_blocksize(agree_kernel);
     grid = create_grid(block, sz);
 
-    agree_kernel<<<grid, block, 0, mainstream>>>(bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value_or(0.0f) * n_images, subpixel_step.value_or(-1.0f), out, PtrStepSz(corrmap));
+    agree_kernel<<<grid, block, 0, mainstream>>>(bicos_disp, ptrs_dev, n_images, min_nxc.value(), min_var.value_or(0.0f) * n_images, subpixel_step.value_or(-1.0f), out, GpuMatHeader(corrmap));
 
     if (!subpixel_step.has_value())
         out = bicos_disp;
