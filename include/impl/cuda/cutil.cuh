@@ -113,8 +113,9 @@ __device__ __forceinline__ __uint128_t load_datacache<__uint128_t>(const __uint1
 #endif
 
 template<size_t N>
-__device__ __forceinline__ varuint_<N> load_datacache(const varuint_<N>* p) {
+__device__ __forceinline__ varuint_<N> load_datacache(const varuint_<N>* _p) {
     varuint_<N> ret;
+    auto p = reinterpret_cast<const uint32_t*>(_p);
 
     constexpr size_t n4 = ret.size / 4, nrest = ret.size % 4;
 
@@ -126,15 +127,16 @@ __device__ __forceinline__ varuint_<N> load_datacache(const varuint_<N>* p) {
             dst[i] = __ldg(src + i);
     }
 
-    using rest = std::conditional_t<nrest == 3, uint3,
-        std::conditional_t<nrest == 2, uint2,
-            std::conditional_t<nrest == 1, uint1,
-                void>>>;
-    if constexpr (!std::is_void_v<rest>) {
-        auto src = reinterpret_cast<const rest*>(p + n4 * 4);
-        auto dst = reinterpret_cast<rest*>(ret.words + n4 * 4);
+    constexpr size_t n2 = nrest / 2, nrest2 = nrest % 2;
+
+    if constexpr (n2 > 0) {
+        auto src = reinterpret_cast<const uint2*>(p + n4 * 4);
+        auto dst = reinterpret_cast<uint2*>(ret.words + n4 * 4);
         *dst = __ldg(src);
     }
+
+    if constexpr (nrest2)
+        ret.words[ret.size - 1] = __ldg(p + ret.size - 1);
 
     return std::move(ret);
 }

@@ -20,6 +20,7 @@
 #include "impl/cuda/cutil.cuh"
 
 #include <iostream>
+#include <bitset>
 
 using namespace BICOS;
 using namespace impl;
@@ -32,9 +33,8 @@ __global__ void load_128bit_kernel(const __uint128_t *src, __uint128_t *dst) {
     *dst = cuda::load_datacache(src);
 }
 
-int main(void) {
-    __uint128_t x, y, *py;
-    __uint128_t *px;
+int test_128(void) {
+    __uint128_t x, y, *py, *px;
 
     cudaMalloc(&py, sizeof(__uint128_t));
     cudaMalloc(&px, sizeof(__uint128_t));
@@ -52,14 +52,39 @@ int main(void) {
         }
     }
 
-    cudaHostUnregister(&y);
-    cudaHostUnregister(&x);
-
     return 0;
 }
 
 #else
 
-int main(void) { return EXIT_TEST_SKIP; }
+int test_128(void) { return 0; }
 
 #endif
+
+template <size_t N>
+__global__ void load_varuint_kernel(const cuda::varuint_<N> *src, cuda::varuint_<N> *dst) {
+    *dst = cuda::load_datacache(src);
+}
+
+template <size_t N>
+int test_varuint(void) {
+    constexpr size_t sz = sizeof(cuda::varuint_<N>);
+    cuda::varuint_<N> x, y, *py, *px;
+    
+    cudaMalloc(&px, sz);
+    cudaMalloc(&py, sz);
+
+    for (size_t i = 0; i < x.size; ++i)
+        x.words[i] = static_cast<uint32_t>(rand());
+
+    assertCudaSuccess(cudaMemcpy(px, &x, sz, cudaMemcpyHostToDevice));
+    load_varuint_kernel<<<1, 1>>>(px, py);
+    assertCudaSuccess(cudaMemcpy(&y, py, sz, cudaMemcpyDeviceToHost));
+    assertCudaSuccess(cudaDeviceSynchronize());
+
+    return x == y ? 0 : 1;
+}
+
+int main(void) {
+    return test_128() + test_varuint<256>() + test_varuint<288>();
+}

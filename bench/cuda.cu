@@ -84,8 +84,8 @@ __global__ void load_datacache_kernel(const T* __restrict__ src, T* __restrict__
 template<typename T>
 void bench_load_datacache(benchmark::State &state) {
     T *a, *b;
-    cudaMalloc(&a, 1);
-    cudaMalloc(&b, 1);
+    cudaMalloc(&a, sizeof(T));
+    cudaMalloc(&b, sizeof(T));
 
     for (auto _ : state) {
         load_datacache_kernel<T><<<1, 1>>>(a, b);

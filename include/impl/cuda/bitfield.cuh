@@ -25,7 +25,7 @@ namespace BICOS::impl::cuda {
 template<size_t NBits>
 struct varuint_ {
     static_assert(NBits >= 32 && NBits % 32 == 0);
-    static constexpr size_t size = NBits / sizeof(uint32_t);
+    static constexpr size_t size = NBits / sizeof(uint32_t) / 8;
     uint32_t words[size] = { 0 };
 
     __device__ int hamming(const varuint_<NBits>& other) const {
@@ -36,6 +36,14 @@ struct varuint_ {
             distance += __popc(words[i] ^ other.words[i]);
 
         return distance;
+    }
+
+    __host__ __device__ bool operator==(const cuda::varuint_<NBits> &rhs) {
+        for (size_t i = 0; i < size; ++i)
+            if (words[i] != rhs.words[i])
+                return false;
+
+        return true;
     }
 };
 
