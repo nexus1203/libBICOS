@@ -68,7 +68,7 @@ read_single_dir(const std::filesystem::path& d, bool gray, std::vector<SequenceE
                 "Expecting numbered files with names NN.png; e.g 0.png, 1.png..."
             );
 
-        cv::Mat m = cv::imread(p, gray ? cv::IMREAD_GRAYSCALE : cv::IMREAD_UNCHANGED);
+        cv::Mat m = cv::imread(p, gray ? (cv::IMREAD_GRAYSCALE | cv::IMREAD_ANYDEPTH) : cv::IMREAD_UNCHANGED);
         if (4 == m.channels()) {
             cv::Mat no_alpha;
             cv::cvtColor(m, no_alpha, cv::COLOR_BGRA2BGR);

@@ -6,11 +6,19 @@
     "configurations": [
         {
             "name": "bicos-cli",
-            "type": "cuda-gdb",
+            "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/builddir/bicos-cli",
             "args": [
-                "${workspaceFolder}/data/left ${workspaceFolder}/data/right -n 33 --limited -t 0.96 -v 2.0 -s 0.1 -o /tmp/bicos-dbg --double"
+                "${workspaceFolder}/data/left",
+                "${workspaceFolder}/data/right",
+                "-n", "33",
+                "--limited",
+                "-t", "0.96",
+                "-v", "2.0", 
+                "-s", "0.1", 
+                "-o /tmp/bicos-dbg",
+                "--double"
             ]
         },
         {
@@ -117,5 +125,11 @@
             "request": "launch",
             "program": "${workspaceFolder}/builddir/test_agree_subpixel_smem_16"
         },
+        {
+            "name": "cutil",
+            "type": "cuda-gdb",
+            "request": "launch",
+            "program": "${workspaceFolder}/builddir/test_cutil"
+        }
     ]
 }
