@@ -25,6 +25,7 @@ Dependencies:
 - [`meson`](https://github.com/mesonbuild/meson) >= 1.1.0 (build)
 - `opencv 4.x` with cuda support
 - `cuda 12.x` including toolkit
+- [`cog`](https://pypi.org/project/cogapp/) (build, cuda, for generating sources)
 - [`benchmark`](https://github.com/google/benchmark) (optional, for executing benchmarks)
 
 ```bash
