@@ -91,32 +91,43 @@ static void match_impl(
     RegisteredPtr ptrs_dev(ptrs_host.data(), 2 * n_images, true);
     RegisteredPtr descr0_dev(&descr0), descr1_dev(&descr1);
 
-    dim3 block, grid;
-
-    if (mode == TransformMode::LIMITED) {
-        block = max_blocksize(transform_limited_kernel<TInput, TDescriptor>);
-        grid = create_grid(block, sz);
-
-        transform_limited_kernel<TInput, TDescriptor>
-            <<<grid, block, 0, substream0>>>(ptrs_dev, n_images, sz, descr0_dev);
-    } else {
-        block = max_blocksize(transform_full_kernel<TInput, TDescriptor>);
-        grid = create_grid(block, sz);
-
-        transform_full_kernel<TInput, TDescriptor>
-            <<<grid, block, 0, substream0>>>(ptrs_dev, n_images, sz, descr0_dev);
+    int pix_idx;
+    switch (n_images) {
+    case 0 ... 4: pix_idx = 0; break;
+    case 5 ... 8: pix_idx = 1; break;
+    case 9 ... 12: pix_idx = 2; break;
+    case 13 ... 16: pix_idx = 3; break;
+    case 17 ... 20: pix_idx = 4; break;
+    case 21 ... 25: pix_idx = 5; break;
+    case 26 ... 30: pix_idx = 6; break;
+    case 31 ... 45: pix_idx = 7; break;
+    case 46 ... 65: pix_idx = 8; break;
+    default: throw Exception("Bad number of images");
     }
 
+    dim3 block, grid;
+
+    /*[[[cog
+    import cog
+    cog.outl('constexpr static transform_kernel_t<TDescriptor> transform_lut[2][9] = {')
+    for kernel in ['transform_full_kernel', 'transform_limited_kernel']:
+        cog.outl('\t{')
+        for npix in [4, 8, 12, 16, 20, 30, 35, 40, 65]:
+            cog.outl(f'\t\t{kernel}<TInput, TDescriptor, {npix}>,')
+        cog.outl('\t},')
+    cog.outl('};')
+    ]]]*/
+    //[[[end]]]
+
+    transform_kernel_t<TDescriptor> transform_kernel = transform_lut[mode == TransformMode::LIMITED][pix_idx];
+    block = max_blocksize(transform_kernel);
+    grid = create_grid(block, sz);
+
+    transform_kernel<<<grid, block, 0, substream0>>>(ptrs_dev, n_images, sz, descr0_dev);
     assertCudaSuccess(cudaGetLastError());
     assertCudaSuccess(cudaEventRecord(event0, substream0));
 
-    if (mode == TransformMode::LIMITED)
-        transform_limited_kernel<TInput, TDescriptor>
-            <<<grid, block, 0, substream1>>>(ptrs_dev + n_images, n_images, sz, descr1_dev);
-    else
-        transform_full_kernel<TInput, TDescriptor>
-            <<<grid, block, 0, substream1>>>(ptrs_dev + n_images, n_images, sz, descr1_dev);
-
+    transform_kernel<<<grid, block, 0, substream1>>>(ptrs_dev + n_images, n_images, sz, descr1_dev);
     assertCudaSuccess(cudaGetLastError());
     assertCudaSuccess(cudaEventRecord(event1, substream1));
 
@@ -205,21 +216,7 @@ static void match_impl(
     if (subpixel_step.has_value())
         init_disparity<float>(out, sz);
 
-    int npix;
-    switch (n_images) {
-    case 0 ... 4: npix = 0; break;
-    case 5 ... 8: npix = 1; break;
-    case 9 ... 12: npix = 2; break;
-    case 13 ... 16: npix = 3; break;
-    case 17 ... 20: npix = 4; break;
-    case 21 ... 25: npix = 5; break;
-    case 26 ... 30: npix = 6; break;
-    case 31 ... 45: npix = 7; break;
-    case 46 ... 65: npix = 8; break;
-    default: throw Exception("Bad number of images");
-    }
-
-    agree_kernel_t agree_kernel = agree_lut[subpixel_step.has_value()][corrmap != nullptr][min_var.has_value()][precision == Precision::DOUBLE][npix];
+    agree_kernel_t agree_kernel = agree_lut[subpixel_step.has_value()][corrmap != nullptr][min_var.has_value()][precision == Precision::DOUBLE][pix_idx];
     block = max_blocksize(agree_kernel);
     grid = create_grid(block, sz);
 

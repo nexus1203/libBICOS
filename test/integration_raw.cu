@@ -39,12 +39,15 @@ int main(int argc, char const* const* argv) {
     std::vector<cv::cuda::GpuMat> _ldev, _rdev;
     std::vector<cuda::GpuMatHeader> dev;
 
+    constexpr size_t n = 22;
+
     read_sequence(argv[1], argv[2], lseq, rseq, true);
+    lseq.resize(n);
+    rseq.resize(n);
     sort_sequence_to_stack(lseq, rseq, lhost, rhost);
     matvec_to_gpu(lhost, rhost, _ldev, _rdev);
 
     const cv::Size sz = lhost.front().size();
-    const size_t n = lhost.size();
 
     for (size_t i = 0; i < n; ++i) {
         dev.push_back(_ldev[i]);
@@ -72,12 +75,12 @@ int main(int argc, char const* const* argv) {
     cudaEventCreate(&ldescev);
     cudaEventCreate(&rdescev);
 
-    block = cuda::max_blocksize(cuda::transform_limited_kernel<uint8_t, uint128_t>);
+    block = cuda::max_blocksize(cuda::transform_limited_kernel<uint8_t, uint128_t, n>);
     grid = create_grid(block, sz);
 
-    cuda::transform_limited_kernel<uint8_t, uint128_t>
+    cuda::transform_limited_kernel<uint8_t, uint128_t, n>
         <<<grid, block, 0, lstream>>>(dptr, n, sz, ldptr);
-    cuda::transform_limited_kernel<uint8_t, uint128_t>
+    cuda::transform_limited_kernel<uint8_t, uint128_t, n>
         <<<grid, block, 0, rstream>>>(dptr + n, n, sz, rdptr);
 
     assertCudaSuccess(cudaGetLastError());

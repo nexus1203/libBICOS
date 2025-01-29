@@ -45,12 +45,10 @@ int main(void) {
 
     fmt::println("limited descriptor transform on {} {} {}", randsize, STR(INPUT_TYPE), STR(DESCRIPTOR_TYPE));
 
-    int max_bits = sizeof(DESCRIPTOR_TYPE) * 8;
-
 #if TRANSFORM_LIMITED
-    size_t n = (max_bits + 7) / 4;
+    constexpr size_t n = max_stacksize_v<DESCRIPTOR_TYPE, TransformMode::LIMITED>;
 #else
-    size_t n = size_t((2 + std::sqrt(4 - 4 * ( 3 - max_bits ))) / 2.0);
+    constexpr size_t n = max_stacksize_v<DESCRIPTOR_TYPE, TransformMode::FULL>;
 #endif
 
     for (size_t i = 0; i < n; ++i) {
@@ -72,18 +70,18 @@ int main(void) {
 
 #if TRANSFORM_LIMITED
 
-    block = cuda::max_blocksize(cuda::transform_limited_kernel<INPUT_TYPE, DESCRIPTOR_TYPE>);
+    block = cuda::max_blocksize(cuda::transform_limited_kernel<INPUT_TYPE, DESCRIPTOR_TYPE, n>);
     grid = create_grid(block, randsize);
 
-    cuda::transform_limited_kernel<INPUT_TYPE, DESCRIPTOR_TYPE>
+    cuda::transform_limited_kernel<INPUT_TYPE, DESCRIPTOR_TYPE, n>
         <<<grid, block>>>(rand_devptr, n, randsize, gpuout_devptr);
 
 #else
 
-    block = cuda::max_blocksize(cuda::transform_limited_kernel<INPUT_TYPE, DESCRIPTOR_TYPE>);
+    block = cuda::max_blocksize(cuda::transform_limited_kernel<INPUT_TYPE, DESCRIPTOR_TYPE, n>);
     grid = create_grid(block, randsize);
 
-    cuda::transform_full_kernel<INPUT_TYPE, DESCRIPTOR_TYPE>
+    cuda::transform_full_kernel<INPUT_TYPE, DESCRIPTOR_TYPE, n>
         <<<grid, block>>>(rand_devptr, n, randsize, gpuout_devptr);
 
 #endif

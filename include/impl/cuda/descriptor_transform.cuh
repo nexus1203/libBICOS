@@ -24,7 +24,10 @@
 
 namespace BICOS::impl::cuda {
 
-template<typename TInput, typename TDescriptor>
+template<typename TDescriptor>
+using transform_kernel_t = void (*)(const GpuMatHeader*, size_t, cv::Size, StepBuf<TDescriptor>*);
+
+template<typename TInput, typename TDescriptor, size_t NPIX>
 __global__ void transform_full_kernel(
     const GpuMatHeader* stacks,
     size_t _n,
@@ -37,7 +40,7 @@ __global__ void transform_full_kernel(
     if (size.width <= col || size.height <= row)
         return;
 
-    TInput pix[PIX_STACKSIZE];
+    TInput pix[NPIX];
     Bitfield_t<TDescriptor> bf;
     ssize_t n = (ssize_t)_n;
 
@@ -51,7 +54,7 @@ __global__ void transform_full_kernel(
     }
     av /= n;
 
-    wider_t<TInput> pairsums[PIX_STACKSIZE];
+    wider_t<TInput> pairsums[NPIX];
 
     // clang-format off
 
@@ -90,7 +93,7 @@ __global__ void transform_full_kernel(
     out->row(row)[col] = bf.v;
 }
 
-template<typename TInput, typename TDescriptor>
+template<typename TInput, typename TDescriptor, size_t NPIX>
 __global__ void transform_limited_kernel(
     const GpuMatHeader* stacks,
     size_t n,
@@ -103,7 +106,7 @@ __global__ void transform_limited_kernel(
     if (size.width <= col || size.height <= row)
         return;
 
-    TInput pix[PIX_STACKSIZE];
+    TInput pix[NPIX];
     Bitfield_t<TDescriptor> bf;
 
     float av = 0.0f;

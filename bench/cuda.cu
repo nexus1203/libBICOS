@@ -259,13 +259,12 @@ template<typename TInput, typename TDescriptor, TransformMode mode>
 void bench_descriptor_transform_kernel(benchmark::State& state) {
     cv::setRNGSeed(seed);
 
-    int bits = sizeof(TDescriptor) * 8;
-    int n = mode == TransformMode::FULL ? int((2 + std::sqrt(4 - 4 * ( 3 - bits ))) / 2.0) : (bits + 7) / 4;
+    constexpr size_t n = max_stacksize_v<TDescriptor, mode>;
 
     std::vector<cv::cuda::GpuMat> _devinput;
     std::vector<cuda::GpuMatHeader> devinput;
 
-    for (int i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i) {
         cv::Mat_<TInput> randmat(size);
         cv::randu(randmat, 0, std::numeric_limits<TInput>::max());
 
@@ -280,16 +279,16 @@ void bench_descriptor_transform_kernel(benchmark::State& state) {
     cuda::StepBuf<TDescriptor> out(size);
     cuda::RegisteredPtr outptr(&out);
 
-    const dim3 block = cuda::max_blocksize(mode == TransformMode::FULL ? cuda::transform_full_kernel<TInput, TDescriptor> : cuda::transform_limited_kernel<TInput, TDescriptor>);
+    const dim3 block = cuda::max_blocksize(mode == TransformMode::FULL ? cuda::transform_full_kernel<TInput, TDescriptor, n> : cuda::transform_limited_kernel<TInput, TDescriptor, n>);
     const dim3 grid  = create_grid(block, size);
 
     if constexpr (mode == TransformMode::FULL)
         for (auto _: state)
-            cuda::transform_full_kernel<TInput, TDescriptor>
+            cuda::transform_full_kernel<TInput, TDescriptor, n>
                 <<<grid, block>>>(inptr, n, size, outptr);
     else
         for (auto _: state)
-            cuda::transform_limited_kernel<TInput, TDescriptor>
+            cuda::transform_limited_kernel<TInput, TDescriptor, n>
                 <<<grid, block>>>(inptr, n, size, outptr);
 
     assertCudaSuccess(cudaGetLastError());
