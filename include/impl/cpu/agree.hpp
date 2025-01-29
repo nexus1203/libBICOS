@@ -142,8 +142,8 @@ static void agree_subpixel(
                 } else {
                     // clang-format off
 
-                    TInput interp[PIX_STACKSIZE];
-                    float a[PIX_STACKSIZE], b[PIX_STACKSIZE], c[PIX_STACKSIZE];
+                    TInput *interp = STACKALLOC(n, TInput);
+                    float *a = STACKALLOC(n, float), *b = STACKALLOC(n, float), *c = STACKALLOC(n, float);
 
                     const TInput *y0 = stack1.ptr<TInput>(row, col1 - 1),
                                  *y1 = stack1.ptr<TInput>(row, col1    ),
@@ -153,9 +153,6 @@ static void agree_subpixel(
                         a[t] = 0.5f * ( y0[t] - 2.0f * y1[t] + y2[t]);
                         b[t] = 0.5f * (-y0[t]                + y2[t]);
                         c[t] = y1[t];
-#ifdef BICOS_DEBUG
-                        assert(t < PIX_STACKSIZE);
-#endif
                     }
 
                     // clang-format on

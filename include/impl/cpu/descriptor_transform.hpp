@@ -83,7 +83,7 @@ inline TDescirptor transform_full(const TInput* pix, size_t _n) {
         av += pix[t];
     av /= n;
 
-    wider_t<TInput> *pairsums = (wider_t<TInput>*)alloca((n - 1)*sizeof(wider_t<TInput>));
+    wider_t<TInput> *pairsums = STACKALLOC(n - 1, wider_t<TInput>);
 
     // clang-format off
 

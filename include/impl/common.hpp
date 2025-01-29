@@ -21,6 +21,8 @@
 #include "../common.hpp"
 #include <cstdint>
 
+#define STACKALLOC(nmemb, type) (type*)alloca((nmemb) * sizeof(type))
+
 namespace BICOS::impl {
 
 template<typename T>
