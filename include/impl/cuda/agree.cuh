@@ -107,7 +107,7 @@ using agree_kernel_t = void (*)(
     [[maybe_unused]] GpuMatHeader _corrmap
 );
 
-template<typename TInput, typename TPrecision, NXCVariant VARIANT, bool CORRMAP>
+template<typename TInput, typename TPrecision, NXCVariant VARIANT, bool CORRMAP, size_t NPIX>
 __global__ void agree_kernel(
     cv::cuda::PtrStepSz<int16_t> raw_disp,
     const GpuMatHeader* stacks,
@@ -136,7 +136,7 @@ __global__ void agree_kernel(
         return;
     }
 
-    TInput pix0[PIX_STACKSIZE], pix1[PIX_STACKSIZE];
+    TInput pix0[NPIX], pix1[NPIX];
 
     const GpuMatHeader *stack0 = stacks, *stack1 = stacks + n;
 
@@ -144,7 +144,7 @@ __global__ void agree_kernel(
         pix0[t] = load_datacache(stack0[t].ptr<TInput>(row) + col);
         pix1[t] = load_datacache(stack1[t].ptr<TInput>(row) + col1);
 #ifdef BICOS_DEBUG
-        if (t >= PIX_STACKSIZE)
+        if (t >= NPIX)
             __trap();
 #endif
     }
@@ -162,7 +162,7 @@ __global__ void agree_kernel(
         d = INVALID_DISP<int16_t>;
 }
 
-template<typename TInput, typename TPrecision, NXCVariant VARIANT, bool CORRMAP>
+template<typename TInput, typename TPrecision, NXCVariant VARIANT, bool CORRMAP, size_t NPIX>
 __global__ void agree_subpixel_kernel(
     cv::cuda::PtrStepSz<int16_t> _raw_disp,
     const GpuMatHeader* stacks,
@@ -191,7 +191,7 @@ __global__ void agree_subpixel_kernel(
     if UNLIKELY (col1 < 0 || out.cols <= col1)
         return;
 
-    TInput pix0[PIX_STACKSIZE], pix1[PIX_STACKSIZE];
+    TInput pix0[NPIX], pix1[NPIX];
 
     const GpuMatHeader *stack0 = stacks, *stack1 = stacks + n;
 
@@ -199,7 +199,7 @@ __global__ void agree_subpixel_kernel(
         pix0[t] = load_datacache(stack0[t].ptr<TInput>(row) + col);
         pix1[t] = load_datacache(stack1[t].ptr<TInput>(row) + col1);
 #ifdef BICOS_DEBUG
-        if (t >= PIX_STACKSIZE)
+        if (t >= NPIX)
             __trap();
 #endif
     }
@@ -220,8 +220,8 @@ __global__ void agree_subpixel_kernel(
 
         out(row, col) = d;
     } else {
-        TInput interp[PIX_STACKSIZE];
-        float a[PIX_STACKSIZE], b[PIX_STACKSIZE], c[PIX_STACKSIZE];
+        TInput interp[NPIX];
+        float a[NPIX], b[NPIX], c[NPIX];
 
         // clang-format off
 

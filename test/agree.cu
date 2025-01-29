@@ -33,7 +33,7 @@ using namespace impl;
 using namespace test;
 
 int main(void) {
-    int n = 10;
+    constexpr int n = 10;
 
     const cv::Size randsize(randint(1024, 4096), randint(512, 2048));
 
@@ -83,7 +83,7 @@ int main(void) {
     devout.setTo(INVALID_DISP<float>);
     cv::Mat_<float> hostout(randsize), devout_host;
 
-    auto kernel = cuda::agree_subpixel_kernel<INPUT_TYPE, double, cuda::NXCVariant::MINVAR, false>;
+    auto kernel = cuda::agree_subpixel_kernel<INPUT_TYPE, double, cuda::NXCVariant::MINVAR, false, n>;
 
     block = cuda::max_blocksize(kernel);
     grid = create_grid(block, randsize);
@@ -115,7 +115,7 @@ int main(void) {
 
     cv::Mat_<int16_t> devout_host;
 
-    auto kernel = cuda::agree_kernel<INPUT_TYPE, double, cuda::NXCVariant::MINVAR, false>;
+    auto kernel = cuda::agree_kernel<INPUT_TYPE, double, cuda::NXCVariant::MINVAR, false, n>;
 
     block = cuda::max_blocksize(kernel);
     grid = create_grid(block, randsize);

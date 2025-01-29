@@ -99,7 +99,7 @@ void bench_load_datacache(benchmark::State &state) {
 template<typename TInput>
 void bench_agree_kernel(benchmark::State& state) {
     cv::setRNGSeed(seed);
-    const int n = 10;
+    constexpr int n = 10;
 
     std::vector<cv::cuda::GpuMat> _devinput;
     std::vector<cuda::GpuMatHeader> devinput;
@@ -118,7 +118,7 @@ void bench_agree_kernel(benchmark::State& state) {
 
     cv::cuda::GpuMat out(size, cv::DataType<int16_t>::type);
 
-    const dim3 block = cuda::max_blocksize(cuda::agree_kernel<TInput, double, cuda::NXCVariant::MINVAR, false>);
+    const dim3 block = cuda::max_blocksize(cuda::agree_kernel<TInput, double, cuda::NXCVariant::MINVAR, false, n>);
     const dim3 grid = create_grid(block, size);
 
     cv::Mat_<int16_t> randdisp(size);
@@ -133,7 +133,7 @@ void bench_agree_kernel(benchmark::State& state) {
 
         state.ResumeTiming();
 
-        cuda::agree_kernel<TInput, double, cuda::NXCVariant::MINVAR, false>
+        cuda::agree_kernel<TInput, double, cuda::NXCVariant::MINVAR, false, n>
             <<<grid, block>>>(randdisp_dev, devptr, n, thresh, minvar, -1.0f, cv::cuda::PtrStepSz<float>(), cuda::GpuMatHeader());
         cudaDeviceSynchronize();
     }
@@ -144,7 +144,7 @@ void bench_agree_kernel(benchmark::State& state) {
 template<typename TInput>
 void bench_agree_subpixel_kernel(benchmark::State& state) {
     cv::setRNGSeed(seed);
-    const int n = 10;
+    constexpr int n = 10;
 
     cv::Mat_<int16_t> randdisp(size);
     cv::randu(randdisp, -1, size.width);
@@ -167,11 +167,11 @@ void bench_agree_subpixel_kernel(benchmark::State& state) {
 
     cv::cuda::GpuMat out(size, cv::DataType<float>::type);
 
-    const dim3 block = cuda::max_blocksize(cuda::agree_subpixel_kernel<TInput, double, cuda::NXCVariant::MINVAR, false>);
+    const dim3 block = cuda::max_blocksize(cuda::agree_subpixel_kernel<TInput, double, cuda::NXCVariant::MINVAR, false, n>);
     const dim3 grid = create_grid(block, size);
 
     for (auto _: state) {
-        cuda::agree_subpixel_kernel<TInput, double, cuda::NXCVariant::MINVAR, false>
+        cuda::agree_subpixel_kernel<TInput, double, cuda::NXCVariant::MINVAR, false, n>
             <<<grid, block>>>(randdisp_dev, devptr, n, thresh, step, minvar, out, cuda::GpuMatHeader());
         cudaDeviceSynchronize();
     }

@@ -180,11 +180,10 @@ static void match_impl(
         corrmap->create(sz, precision == Precision::SINGLE ? CV_32FC1 : CV_64FC1);
 
     // clang-format off
-    // :(
 
     /*[[[cog
     import cog
-    cog.outl('constexpr static agree_kernel_t agree_lut[2][2][2][2] = {')
+    cog.outl('constexpr static agree_kernel_t agree_lut[2][2][2][2][9] = {')
     for kernel in ['agree_kernel', 'agree_subpixel_kernel']:
         cog.outl('\t{')
         for corrmap in ['false', 'true']:
@@ -192,7 +191,10 @@ static void match_impl(
             for variant in ['NXCVariant::PLAIN', 'NXCVariant::MINVAR']:
                 cog.outl('\t\t\t{')
                 for precision in ['float', 'double']:
-                    cog.outl(f'\t\t\t\t{kernel}<TInput, {precision}, {variant}, {corrmap}>,')
+                    cog.outl('\t\t\t\t{')
+                    for npix in [4, 8, 12, 16, 20, 30, 35, 40, 65]:
+                        cog.outl(f'\t\t\t\t{kernel}<TInput, {precision}, {variant}, {corrmap}, {npix}>,')
+                    cog.outl('\t\t\t\t},')
                 cog.outl('\t\t\t},')
             cog.outl('\t\t},')
         cog.outl('\t\t},')
@@ -203,7 +205,21 @@ static void match_impl(
     if (subpixel_step.has_value())
         init_disparity<float>(out, sz);
 
-    agree_kernel_t agree_kernel = agree_lut[subpixel_step.has_value()][corrmap != nullptr][min_var.has_value()][precision == Precision::DOUBLE];
+    int npix;
+    switch (n_images) {
+    case 0 ... 4: npix = 0; break;
+    case 5 ... 8: npix = 1; break;
+    case 9 ... 12: npix = 2; break;
+    case 13 ... 16: npix = 3; break;
+    case 17 ... 20: npix = 4; break;
+    case 21 ... 25: npix = 5; break;
+    case 26 ... 30: npix = 6; break;
+    case 31 ... 45: npix = 7; break;
+    case 46 ... 65: npix = 8; break;
+    default: throw Exception("Bad number of images");
+    }
+
+    agree_kernel_t agree_kernel = agree_lut[subpixel_step.has_value()][corrmap != nullptr][min_var.has_value()][precision == Precision::DOUBLE][npix];
     block = max_blocksize(agree_kernel);
     grid = create_grid(block, sz);
 
