@@ -38,7 +38,7 @@ void save_image(const cv::Mat& image, std::filesystem::path outfile, cv::Colorma
     if (image.type() == CV_32FC1 || image.type() == CV_64FC1)
         mask = image != image;
     else
-        mask = image == -1;
+        mask = image == INVALID_DISP<int16_t>;
 
     cv::normalize(image, normalized, 0, 255, cv::NORM_MINMAX, CV_8UC1);
     normalized.setTo(0, mask);
