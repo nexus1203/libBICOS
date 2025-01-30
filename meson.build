@@ -15,7 +15,7 @@
 ##  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ##
 
-project('libBICOS', 'cpp', version: '2.0.0', license: 'LGPL-3.0-or-later', license_files: ['COPYING', 'COPYING.LESSER'], meson_version: '>=1.1.0')
+project('libBICOS', 'cpp', version: '2.1.0', license: 'LGPL-3.0-or-later', license_files: ['COPYING', 'COPYING.LESSER'], meson_version: '>=1.1.0')
 
 pkg = import('pkgconfig')
 fs  = import('fs')
