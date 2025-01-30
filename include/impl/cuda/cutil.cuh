@@ -170,20 +170,20 @@ public:
     GpuMatHeader(cv::cuda::GpuMat* ptr);
 
     template<typename T>
-    __device__ __forceinline__ T* ptr(int y = 0) {
+    __device__ T* ptr(int y = 0) {
         return (T*)(((uint8_t*)data) + y * step);
     }
     template<typename T>
-    __device__ __forceinline__ const T* ptr(int y = 0) const {
+    __device__ const T* ptr(int y = 0) const {
         return (const T*)(((const uint8_t*)data) + y * step);
     }
 
     template<typename T>
-    __device__ __forceinline__ T& at(int y, int x) {
+    __device__ T& at(int y, int x) {
         return ptr<T>(y)[x];
     }
     template<typename T>
-    __device__ __forceinline__ const T& at(int y, int x) const {
+    __device__ const T& at(int y, int x) const {
         return ptr<T>(y)[x];
     }
 };

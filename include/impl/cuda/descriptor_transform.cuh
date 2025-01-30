@@ -45,16 +45,11 @@ __global__ void transform_full_kernel(
     ssize_t n = (ssize_t)_n;
 
     float av = 0.0f;
-    for (ssize_t i = 0; i < n; ++i) {
+    for (ssize_t i = 0; i < n; ++i)
         av += pix[i] = load_datacache(stacks[i].ptr<TInput>(row) + col);
-#ifdef BICOS_DEBUG
-        if (i >= sizeof(pix))
-            __trap();
-#endif
-    }
     av /= n;
 
-    wider_t<TInput> pairsums[NPIX];
+    wider_t<TInput> pairsums[NPIX - 1];
 
     // clang-format off
 
