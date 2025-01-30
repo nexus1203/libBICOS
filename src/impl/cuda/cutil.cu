@@ -20,8 +20,6 @@
 
 namespace BICOS::impl::cuda {
 
-GpuMatHeader::GpuMatHeader(): rows(0), cols(0), data(nullptr), step(0) {}
-
 GpuMatHeader::GpuMatHeader(const cv::cuda::GpuMat &mat):
     rows(mat.rows),
     cols(mat.cols),

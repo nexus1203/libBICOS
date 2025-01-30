@@ -102,20 +102,63 @@ public:
 };
 
 template<typename T>
-__device__ __forceinline__ T load_datacache(const T* p) {
+void init_disparity(
+    cv::cuda::GpuMat& map,
+    cv::Size size,
+    cv::cuda::Stream& stream = cv::cuda::Stream::Null()
+) {
+    map.create(size, cv::DataType<T>::type);
+    map.setTo(INVALID_DISP<T>, stream);
+}
+
+class GpuMatHeader {
+private:
+    int rows, cols;
+    size_t step;
+    void* data;
+
+public:
+    __host__ __device__ inline GpuMatHeader(): rows(0), cols(0), data(nullptr), step(0) {};
+    GpuMatHeader(const cv::cuda::GpuMat& mat);
+    GpuMatHeader(cv::cuda::GpuMat* ptr);
+
+    template<typename T>
+    __device__ T* ptr(int y = 0) {
+        return (T*)(((uint8_t*)data) + y * step);
+    }
+    template<typename T>
+    __device__ const T* ptr(int y = 0) const {
+        return (const T*)(((const uint8_t*)data) + y * step);
+    }
+
+    template<typename T>
+    __device__ T& at(int y, int x) {
+        return ptr<T>(y)[x];
+    }
+    template<typename T>
+    __device__ const T& at(int y, int x) const {
+        return ptr<T>(y)[x];
+    }
+
+    template<typename T>
+    friend __device__ T load_datacache(const T* p);
+};
+
+template<typename T>
+__device__ inline __inline_hint__ T load_datacache(const T* p) {
     return __ldg(p);
 }
 
 #ifdef BICOS_CUDA_HAS_UINT128
 template<>
-__device__ __forceinline__ __uint128_t load_datacache<__uint128_t>(const __uint128_t* p) {
+__device__ inline __uint128_t load_datacache<__uint128_t>(const __uint128_t* p) {
     auto as2 = __ldg(reinterpret_cast<const ulonglong2*>(p));
     return *reinterpret_cast<__uint128_t*>(&as2);
 }
 #endif
 
 template<size_t N>
-__device__ __forceinline__ varuint_<N> load_datacache(const varuint_<N>* _p) {
+__device__ inline varuint_<N> load_datacache(const varuint_<N>* _p) {
     varuint_<N> ret;
     auto p = reinterpret_cast<const uint32_t*>(_p);
 
@@ -144,48 +187,20 @@ __device__ __forceinline__ varuint_<N> load_datacache(const varuint_<N>* _p) {
 }
 
 template<typename T>
-__device__ __forceinline__ T load_deref(const T* p) {
+__device__ inline __inline_hint__ T load_deref(const T* p) {
     return *p;
 }
 
-template<typename T>
-void init_disparity(
-    cv::cuda::GpuMat& map,
-    cv::Size size,
-    cv::cuda::Stream& stream = cv::cuda::Stream::Null()
-) {
-    map.create(size, cv::DataType<T>::type);
-    map.setTo(INVALID_DISP<T>, stream);
+template<>
+__device__ inline GpuMatHeader load_datacache<GpuMatHeader>(const GpuMatHeader* p) {
+    GpuMatHeader ret;
+
+    ret.rows = __ldg(&p->rows);
+    ret.cols = __ldg(&p->cols);
+    ret.step = __ldg(&p->step);
+    ret.data = reinterpret_cast<void*>(__ldg(reinterpret_cast<const intptr_t*>(&p->data)));
+
+    return std::move(ret);
 }
-
-class GpuMatHeader {
-private:
-    int rows, cols;
-    size_t step;
-    void* data;
-
-public:
-    GpuMatHeader();
-    GpuMatHeader(const cv::cuda::GpuMat &mat);
-    GpuMatHeader(cv::cuda::GpuMat* ptr);
-
-    template<typename T>
-    __device__ T* ptr(int y = 0) {
-        return (T*)(((uint8_t*)data) + y * step);
-    }
-    template<typename T>
-    __device__ const T* ptr(int y = 0) const {
-        return (const T*)(((const uint8_t*)data) + y * step);
-    }
-
-    template<typename T>
-    __device__ T& at(int y, int x) {
-        return ptr<T>(y)[x];
-    }
-    template<typename T>
-    __device__ const T& at(int y, int x) const {
-        return ptr<T>(y)[x];
-    }
-};
 
 } // namespace BICOS::impl::cuda

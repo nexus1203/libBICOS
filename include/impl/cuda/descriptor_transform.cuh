@@ -46,7 +46,7 @@ __global__ void transform_full_kernel(
 
     float av = 0.0f;
     for (ssize_t i = 0; i < n; ++i)
-        av += pix[i] = load_datacache(stacks[i].ptr<TInput>(row) + col);
+        av += pix[i] = load_datacache(load_datacache(stacks + i).ptr<TInput>(row) + col);
     av /= n;
 
     wider_t<TInput> pairsums[NPIX - 1];
@@ -106,7 +106,7 @@ __global__ void transform_limited_kernel(
 
     float av = 0.0f;
     for (size_t i = 0; i < n; ++i) {
-        av += pix[i] = load_datacache(stacks[i].ptr<TInput>(row) + col);
+        av += pix[i] = load_datacache(load_datacache(stacks + i).ptr<TInput>(row) + col);
 #ifdef BICOS_DEBUG
         if (i >= sizeof(pix))
             __trap();

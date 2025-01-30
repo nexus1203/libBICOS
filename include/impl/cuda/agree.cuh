@@ -140,10 +140,10 @@ __global__ void agree_kernel(
 
     const GpuMatHeader *stack0 = stacks, *stack1 = stacks + n;
 
-    for (size_t t = 0; t < n; ++t) {
+    for (size_t t = 0; t < n; ++t)
         pix0[t] = load_datacache(stack0[t].ptr<TInput>(row) + col);
+    for (size_t t = 0; t < n; ++t)
         pix1[t] = load_datacache(stack1[t].ptr<TInput>(row) + col1);
-    }
 
     TPrecision nxc;
     if constexpr (std::is_same_v<TPrecision, float>)
@@ -191,10 +191,10 @@ __global__ void agree_subpixel_kernel(
 
     const GpuMatHeader *stack0 = stacks, *stack1 = stacks + n;
 
-    for (size_t t = 0; t < n; ++t) {
+    for (size_t t = 0; t < n; ++t)
         pix0[t] = load_datacache(stack0[t].ptr<TInput>(row) + col);
+    for (size_t t = 0; t < n; ++t)
         pix1[t] = load_datacache(stack1[t].ptr<TInput>(row) + col1);
-    }
 
     TPrecision nxc;
 
