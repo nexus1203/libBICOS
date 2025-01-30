@@ -33,7 +33,7 @@ template<typename T, typename V>
 using corrfun = V (*)(const T*, const T*, size_t, V);
 
 template<NXCVariant VARIANT, typename T>
-__device__ __forceinline__ double nxcorrd(
+__device__ double nxcorrd(
     const T* __restrict__ pix0,
     const T* __restrict__ pix1,
     size_t n,
@@ -65,7 +65,7 @@ __device__ __forceinline__ double nxcorrd(
 }
 
 template<NXCVariant VARIANT, typename T>
-__device__ __forceinline__ float nxcorrf(
+__device__ float nxcorrf(
     const T* __restrict__ pix0,
     const T* __restrict__ pix1,
     size_t n,
@@ -143,10 +143,6 @@ __global__ void agree_kernel(
     for (size_t t = 0; t < n; ++t) {
         pix0[t] = load_datacache(stack0[t].ptr<TInput>(row) + col);
         pix1[t] = load_datacache(stack1[t].ptr<TInput>(row) + col1);
-#ifdef BICOS_DEBUG
-        if (t >= NPIX)
-            __trap();
-#endif
     }
 
     TPrecision nxc;
@@ -158,7 +154,7 @@ __global__ void agree_kernel(
     if constexpr (CORRMAP)
         corrmap.at<TPrecision>(row, col) = nxc;
 
-    if (nxc < min_nxc)
+    if (nxc < (TPrecision)min_nxc)
         d = INVALID_DISP<int16_t>;
 }
 
@@ -198,10 +194,6 @@ __global__ void agree_subpixel_kernel(
     for (size_t t = 0; t < n; ++t) {
         pix0[t] = load_datacache(stack0[t].ptr<TInput>(row) + col);
         pix1[t] = load_datacache(stack1[t].ptr<TInput>(row) + col1);
-#ifdef BICOS_DEBUG
-        if (t >= NPIX)
-            __trap();
-#endif
     }
 
     TPrecision nxc;
@@ -215,7 +207,7 @@ __global__ void agree_subpixel_kernel(
         if constexpr (CORRMAP)
             corrmap.at<TPrecision>(row, col) = nxc;
 
-        if (nxc < min_nxc)
+        if (nxc < (TPrecision)min_nxc)
             return;
 
         out(row, col) = d;
@@ -256,7 +248,7 @@ __global__ void agree_subpixel_kernel(
         if constexpr (CORRMAP)
             corrmap.at<TPrecision>(row, col) = best_nxc;
 
-        if (best_nxc < min_nxc)
+        if (best_nxc < (TPrecision)min_nxc)
             return;
 
         // larger x -> further to the right -> less disparity
