@@ -30,7 +30,7 @@ Dependencies:
 
 ```bash
 # recommended: clone the most recent release
-$ git clone --depth 1 --branch v2.0.0 https://github.com/JMUWRobotics/libBICOS
+$ git clone --depth 1 --branch v2.1.0 https://github.com/JMUWRobotics/libBICOS
 $ cd libBICOS
 
 $ meson setup builddir --buildtype release
