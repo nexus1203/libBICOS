@@ -97,7 +97,7 @@ libbicos_dep = declare_dependency(
 meson.override_dependency('BICOS', libbicos_dep)
 
 py = import('python').find_installation(pure: false)
-pybind11 = dependency('pybind11')
+pybind11 = dependency('pybind11', version: '>=2.0.0')
 if py.found() and pybind11.found()
     py.extension_module('pybicos',
         'src/pybicos.cpp',
