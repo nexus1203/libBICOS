@@ -18,7 +18,6 @@
 
 #include "common.hpp"
 #include "match.hpp"
-#include "opencv2/core/cuda.hpp"
 
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
@@ -27,25 +26,47 @@
 namespace py = pybind11;
 using namespace BICOS;
 
+static int cvtype_of(py::dtype pydtype) {
+    int dtype = pydtype.num();
+
+    if (dtype == py::dtype::of<uint8_t>().num())
+        return CV_8U;
+    else if (dtype == py::dtype::of<uint16_t>().num())
+        return CV_16U;
+    else if (dtype == py::dtype::of<int16_t>().num())
+        return CV_16S;
+    else if (dtype == py::dtype::of<float>().num())
+        return CV_32F;
+    else if (dtype == py::dtype::of<double>().num())
+        return CV_64F;
+    else
+        throw Exception("unimplemented cvtype_of");
+}
+
+static py::dtype dtype_of(int cvtype) {
+    switch (cvtype) {
+    case CV_16SC1:
+        return py::dtype::of<int16_t>();
+    case CV_32FC1:
+        return py::dtype::of<float>();
+    case CV_64FC1:
+        return py::dtype::of<double>();
+    default:
+        throw Exception("unimplemented dtype_of");
+    }
+}
+
 static Image handle_to_image(const py::handle& hdl) {
     auto arr = hdl.cast<py::array>();
-    int dtype = arr.dtype().num();
-
-    int type;
-    if (dtype == py::dtype::of<uint8_t>().num())
-        type = CV_8UC1;
-    else if (dtype == py::dtype::of<uint16_t>().num())
-        type = CV_16UC1;
-    else
-        throw std::invalid_argument("dtype must be uint{8,16}");
 
     const cv::Mat header(
         (int)arr.shape(0),
         (int)arr.shape(1),
-        type,
+        cvtype_of(arr.dtype()),
         const_cast<void*>(arr.data()),
         (int)arr.strides(0)
     );
+
 #ifdef BICOS_CUDA
     return Image(header);
 #else
@@ -53,30 +74,24 @@ static Image handle_to_image(const py::handle& hdl) {
 #endif
 }
 
-static py::array image_to_buffer(const Image& img) {
-    py::array ret;
-    switch (img.type()) {
-    case CV_16SC1:
-        ret = py::array_t<int16_t>({ img.rows, img.cols });
-        break;
-    case CV_32FC1:
-        ret = py::array_t<float>({ img.rows, img.cols });
-        break;
-    default:
-        __builtin_unreachable();
-    }
-    cv::Mat header(img.rows, img.cols, img.type(), const_cast<void*>(ret.data()), ret.strides(0));
+static void image_to_array(const Image& img, py::array& ret) {
+    int type = img.type();
+    if (ret.shape(0) != img.rows || ret.shape(1) != img.cols || cvtype_of(ret.dtype()) != type)
+        ret = py::array(dtype_of(type), { img.rows, img.cols });
+
+    cv::Mat header(img.rows, img.cols, type, ret.mutable_data(), ret.strides(0));
 #ifdef BICOS_CUDA
     img.download(header);
 #else
-    img.copyTo(header);
+    if (img.data() != header.data())
+        img.copyTo(header);
 #endif
-    return ret;
 }
 
-py::array pybicos_match(py::list stack0, py::list stack1, Config cfg) {
+py::tuple pybicos_match(py::list stack0, py::list stack1, Config cfg) {
+    py::array disparity, corrmap;
     std::vector<Image> stack0_, stack1_;
-    Image disparity;
+    Image disparity_, corrmap_, *pcorrmap_ = &corrmap_;
 
     if (stack0.empty() || stack1.empty())
         throw Exception("empty stacks");
@@ -84,9 +99,12 @@ py::array pybicos_match(py::list stack0, py::list stack1, Config cfg) {
     std::transform(stack0.begin(), stack0.end(), std::back_inserter(stack0_), handle_to_image);
     std::transform(stack1.begin(), stack1.end(), std::back_inserter(stack1_), handle_to_image);
 
-    BICOS::match(stack0_, stack1_, disparity, cfg);
+    BICOS::match(stack0_, stack1_, disparity_, cfg, pcorrmap_);
 
-    return image_to_buffer(disparity);
+    image_to_array(disparity_, disparity);
+    image_to_array(corrmap_, corrmap);
+
+    return py::make_tuple(disparity, corrmap);
 }
 
 PYBIND11_MODULE(pybicos, m) {
@@ -104,11 +122,36 @@ PYBIND11_MODULE(pybicos, m) {
         .def_readwrite("variant", &Config::variant);
 
 #ifdef BICOS_CUDA
-    py::enum_<Precision>(m, "Precision").def(py::init<>());
+    py::enum_<Precision>(m, "Precision")
+        .value("Double", Precision::DOUBLE)
+        .value("Single", Precision::SINGLE)
+        .export_values();
 #endif
 
-    py::class_<Variant::NoDuplicates>(m, "Variant_NoDuplicates").def(py::init<>());
-    py::class_<Variant::Consistency>(m, "Variant_Consistency").def(py::init<int, bool>());
+    py::class_<Variant::NoDuplicates>(m, "Variant_NoDuplicates").def(py::init());
+    py::class_<Variant::Consistency>(m, "Variant_Consistency")
+        .def(py::init<int, bool>(), py::arg("max_lr_diff") = 1, py::arg("no_dupes") = false);
+    py::enum_<TransformMode>(m, "TransformMode")
+        .value("Full", TransformMode::FULL)
+        .value("Limited", TransformMode::LIMITED)
+        .export_values();
 
-    m.def("match", &pybicos_match);
+    m.def(
+        "match",
+        &pybicos_match,
+        py::arg("stack0").none(false),
+        py::arg("stack1").none(false),
+        py::arg_v("cfg", Config {}, "Default")
+    );
+
+    m.def("invalid_disparity", [](const py::dtype& dtype) -> py::object {
+        switch (cvtype_of(dtype)) {
+        case CV_16S:
+            return py::int_(INVALID_DISP<int16_t>);
+        case CV_32F:
+            return py::float_(INVALID_DISP<float>);
+        default:
+            throw Exception("undefined");
+        }
+    });
 }
