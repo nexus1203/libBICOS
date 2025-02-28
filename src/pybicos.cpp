@@ -17,14 +17,25 @@
  */
 
 #include "common.hpp"
+#include "formatable.hpp"
 #include "match.hpp"
 
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#define ExceptionFmt(fmtstr, ...) Exception(fmt::format(fmtstr, ##__VA_ARGS__))
+
 namespace py = pybind11;
 using namespace BICOS;
+
+template<>
+struct fmt::formatter<py::str>: formatter<string_view> {
+    auto format(const py::str& str, format_context& ctx) const -> format_context::iterator {
+        const std::string& s = str;
+        return format_to(ctx.out(), "{}", s);
+    }
+};
 
 static int cvtype_of(py::dtype pydtype) {
     int dtype = pydtype.num();
@@ -40,19 +51,19 @@ static int cvtype_of(py::dtype pydtype) {
     else if (dtype == py::dtype::of<double>().num())
         return CV_64F;
     else
-        throw Exception("unimplemented cvtype_of");
+        throw ExceptionFmt("unimplemented cvtype_of(dtype={})", py::str(pydtype));
 }
 
 static py::dtype dtype_of(int cvtype) {
     switch (cvtype) {
-    case CV_16SC1:
-        return py::dtype::of<int16_t>();
-    case CV_32FC1:
-        return py::dtype::of<float>();
-    case CV_64FC1:
-        return py::dtype::of<double>();
-    default:
-        throw Exception("unimplemented dtype_of");
+        case CV_16SC1:
+            return py::dtype::of<int16_t>();
+        case CV_32FC1:
+            return py::dtype::of<float>();
+        case CV_64FC1:
+            return py::dtype::of<double>();
+        default:
+            throw ExceptionFmt("unimplemented dtype_of(cvtype={})", cvtype);
     }
 }
 
@@ -119,7 +130,8 @@ PYBIND11_MODULE(pybicos, m) {
 #ifdef BICOS_CUDA
         .def_readwrite("precision", &Config::precision)
 #endif
-        .def_readwrite("variant", &Config::variant);
+        .def_readwrite("variant", &Config::variant)
+        .def("__repr__", [](const Config& c) { return fmt::format("{}", c); });
 
 #ifdef BICOS_CUDA
     py::enum_<Precision>(m, "Precision")
@@ -128,13 +140,22 @@ PYBIND11_MODULE(pybicos, m) {
         .export_values();
 #endif
 
-    py::class_<Variant::NoDuplicates>(m, "Variant_NoDuplicates").def(py::init());
-    py::class_<Variant::Consistency>(m, "Variant_Consistency")
-        .def(py::init<int, bool>(), py::arg("max_lr_diff") = 1, py::arg("no_dupes") = false);
+    auto Variant = m.def_submodule("Variant");
+    {
+        py::class_<Variant::NoDuplicates>(Variant, "NoDuplicates")
+            .def(py::init())
+            .def("__repr__", [](const Variant::NoDuplicates& nd) { return fmt::format("{}", nd); });
+        py::class_<Variant::Consistency>(Variant, "Consistency")
+            .def(py::init<int, bool>(), py::arg("max_lr_diff") = 1, py::arg("no_dupes") = false)
+            .def("__repr__", [](const Variant::Consistency& vc) { return fmt::format("{}", vc); });
+    }
+
     py::enum_<TransformMode>(m, "TransformMode")
         .value("Full", TransformMode::FULL)
         .value("Limited", TransformMode::LIMITED)
         .export_values();
+
+    py::register_local_exception<Exception>(m, "Exception");
 
     m.def(
         "match",
@@ -144,14 +165,14 @@ PYBIND11_MODULE(pybicos, m) {
         py::arg_v("cfg", Config {}, "Default")
     );
 
-    m.def("invalid_disparity", [](const py::dtype& dtype) -> py::object {
+    m.def("invalid_disparity", [](py::dtype dtype) -> py::object {
         switch (cvtype_of(dtype)) {
-        case CV_16S:
-            return py::int_(INVALID_DISP<int16_t>);
-        case CV_32F:
-            return py::float_(INVALID_DISP<float>);
-        default:
-            throw Exception("undefined");
+            case CV_16S:
+                return py::int_(INVALID_DISP<int16_t>);
+            case CV_32F:
+                return py::float_(INVALID_DISP<float>);
+            default:
+                throw ExceptionFmt("invalid_disparity undefined for {}", py::str(dtype));
         }
     });
 }
