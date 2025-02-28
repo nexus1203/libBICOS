@@ -83,7 +83,7 @@ static void image_to_array(const Image& img, py::array& ret) {
 #ifdef BICOS_CUDA
     img.download(header);
 #else
-    if (img.data() != header.data())
+    if (img.data != header.data)
         img.copyTo(header);
 #endif
 }
