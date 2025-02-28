@@ -20,27 +20,27 @@
 #include "common.hpp"
 
 #include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <ostream>
 #include <stdexcept>
 
 #include <fmt/core.h>
-#include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 namespace BICOS {
 
 void save_image(const cv::Mat& image, std::filesystem::path outfile, cv::ColormapTypes cmap) {
     cv::Mat normalized, colorized;
-    cv::MatExpr mask;
+    cv::MatExpr mask, nmask;
 
-    if (image.type() == CV_32FC1 || image.type() == CV_64FC1)
+    if (image.type() == CV_32FC1 || image.type() == CV_64FC1) {
         mask = image != image;
-    else
+        nmask = image == image;
+    } else {
         mask = image == INVALID_DISP<int16_t>;
+        nmask = image != INVALID_DISP<int16_t>;
+    }
 
-    cv::normalize(image, normalized, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+    cv::normalize(image, normalized, 0, 255, cv::NORM_MINMAX, CV_8UC1, nmask);
     normalized.setTo(0, mask);
     cv::applyColorMap(normalized, colorized, cmap);
     colorized.setTo(0, mask);
@@ -68,7 +68,10 @@ read_single_dir(const std::filesystem::path& d, bool gray, std::vector<SequenceE
                 "Expecting numbered files with names NN.png; e.g 0.png, 1.png..."
             );
 
-        cv::Mat m = cv::imread(p, gray ? (cv::IMREAD_GRAYSCALE | cv::IMREAD_ANYDEPTH) : cv::IMREAD_UNCHANGED);
+        cv::Mat m = cv::imread(
+            p,
+            gray ? (cv::IMREAD_GRAYSCALE | cv::IMREAD_ANYDEPTH) : cv::IMREAD_UNCHANGED
+        );
         if (4 == m.channels()) {
             cv::Mat no_alpha;
             cv::cvtColor(m, no_alpha, cv::COLOR_BGRA2BGR);
