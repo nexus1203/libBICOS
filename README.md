@@ -30,7 +30,7 @@ Dependencies:
 
 ```bash
 # recommended: clone the most recent release
-$ git clone --depth 1 --branch v2.1.0 https://github.com/JMUWRobotics/libBICOS
+$ git clone --depth 1 --branch v2.2.0 https://github.com/JMUWRobotics/libBICOS
 $ cd libBICOS
 
 $ meson setup builddir --buildtype release
@@ -47,6 +47,22 @@ The versioning scheme of the library is [Semantic Versioning](https://semver.org
 
 ### Linking
 After installing, you can include `/usr/local/include/BICOS/*` and link against `/usr/local/lib/libBICOS.so`.
+
+### Python module
+With an available python installation, meson will build a (somewhat experimental) python module `pybicos`. It is a wrapper around the C++ API for more convenient experimentation:
+```python
+import pybicos
+import cv2 as cv
+
+lstack = [cv.imread(f"data/left/{i}.png", cv.IMREAD_UNCHANGED) for i in range(20)]
+rstack = [cv.imread(f"data/right/{i}.png", cv.IMREAD_UNCHANGED) for i in range(20)]
+
+cfg = pybicos.Config()
+cfg.nxcorr_threshold = 0.9
+
+disparity, correlation_map = pybicos.match(lstack, rstack, cfg)
+
+```
 
 ### Commandline-interface
 Alternatively, this project builds `bicos-cli`. To give you a feel for the parameters of BICOS, you can download an example dataset with [`data/prepare.sh`](/data/prepare.sh) that contains rectified imagery from a stereo camera, where images per side only differ in the projected light pattern.
