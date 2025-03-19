@@ -183,7 +183,7 @@ __device__ inline varuint_<N> load_datacache(const varuint_<N>* _p) {
     if constexpr (nrest2)
         ret.words[ret.size - 1] = __ldg(p + ret.size - 1);
 
-    return std::move(ret);
+    return ret;
 }
 
 template<typename T>
@@ -200,7 +200,7 @@ __device__ inline GpuMatHeader load_datacache<GpuMatHeader>(const GpuMatHeader* 
     ret.step = __ldg(&p->step);
     ret.data = reinterpret_cast<void*>(__ldg(reinterpret_cast<const intptr_t*>(&p->data)));
 
-    return std::move(ret);
+    return ret;
 }
 
 } // namespace BICOS::impl::cuda
