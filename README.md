@@ -1,7 +1,7 @@
 # libBICOS
 
 BInary COrrespondence Search for multi-shot stereo imaging, with optional CUDA acceleration.
-Fork modified..
+Fork modified.. cog, and fmt dependencies are removed. some parts are modified in cpu.cpp to avoid stack overflow.
 ## Citing:
 
 This is the implementation of the [corresponding paper](https://isprs-archives.copernicus.org/articles/XLVIII-2-W7-2024/57/2024/isprs-archives-XLVIII-2-W7-2024-57-2024.pdf) which appeared in [Optical 3D Metrology 2024](https://o3dm.fbk.eu):
