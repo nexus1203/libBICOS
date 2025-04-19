@@ -22,7 +22,6 @@
 #include <filesystem>
 #include <stdexcept>
 
-#include <fmt/core.h>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
@@ -45,15 +44,17 @@ void save_image(const cv::Mat& image, std::filesystem::path outfile, cv::Colorma
     cv::applyColorMap(normalized, colorized, cmap);
     colorized.setTo(0, mask);
 
-    if (!cv::imwrite(outfile.replace_extension("png"), colorized))
-        fmt::println(stderr, "Could not save to\t{}", outfile.string());
-    else
-        fmt::println("Saved colorized disparity to\t\t{}", outfile.string());
+    if (!cv::imwrite(outfile.replace_extension("png"), colorized)) {
+        std::cerr << "Could not save to\t" << outfile << std::endl;
+    } else {
+        std::cout << "Saved colorized disparity to\t\t" << outfile << std::endl;
+    }
 
-    if (!cv::imwrite(outfile.replace_extension("tiff"), image))
-        fmt::println(stderr, "Could not save to\t{}", outfile.string());
-    else
-        fmt::println(stderr, "Saved floating-point disparity to\t{}", outfile.string());
+    if (!cv::imwrite(outfile.replace_extension("tiff"), image)) {
+        std::cerr << "Could not save to\t" << outfile << std::endl;
+    } else {
+        std::cout << "Saved floating-point disparity to\t" << outfile << std::endl;
+    }
 }
 
 static void

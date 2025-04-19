@@ -21,6 +21,7 @@
 #include "common.hpp"
 #include "compat.hpp"
 #include "impl/common.hpp"
+#include <vector>
 
 namespace BICOS::impl::cpu {
 
@@ -142,17 +143,22 @@ static void agree_subpixel(
                 } else {
                     // clang-format off
 
-                    TInput *interp = STACKALLOC(n, TInput);
-                    float *a = STACKALLOC(n, float), *b = STACKALLOC(n, float), *c = STACKALLOC(n, float);
+                    // nexus1203 allocate interpolation buffers on heap to avoid stack overflow
+                    std::vector<TInput> interp(n);
+                    std::vector<float> a(n), b(n), c(n);
+                    TInput* interp_ptr = interp.data();
+                    float* a_ptr = a.data();
+                    float* b_ptr = b.data();
+                    float* c_ptr = c.data();
 
                     const TInput *y0 = stack1.ptr<TInput>(row, col1 - 1),
                                  *y1 = stack1.ptr<TInput>(row, col1    ),
                                  *y2 = stack1.ptr<TInput>(row, col1 + 1);
                     
                     for (size_t t = 0; t < n; ++t) {
-                        a[t] = 0.5f * ( y0[t] - 2.0f * y1[t] + y2[t]);
-                        b[t] = 0.5f * (-y0[t]                + y2[t]);
-                        c[t] = y1[t];
+                        a_ptr[t] = 0.5f * ( y0[t] - 2.0f * y1[t] + y2[t]);
+                        b_ptr[t] = 0.5f * (-y0[t]                + y2[t]);
+                        c_ptr[t] = y1[t];
                     }
 
                     // clang-format on
@@ -161,9 +167,9 @@ static void agree_subpixel(
 
                     for (float x = -1.f; x <= 1.f; x += subpixel_step) {
                         for (size_t t = 0; t < n; ++t)
-                            interp[t] = (TInput)roundevenf(a[t] * x * x + b[t] * x + c[t]);
+                            interp_ptr[t] = (TInput)roundevenf(a_ptr[t] * x * x + b_ptr[t] * x + c_ptr[t]);
 
-                        float nxc = nxcorr(stack0.ptr<TInput>(row, col), interp, n, min_var);
+                        float nxc = nxcorr(stack0.ptr<TInput>(row, col), interp_ptr, n, min_var);
 
                         if (best_nxc < nxc) {
                             best_x = x;

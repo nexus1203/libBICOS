@@ -1,0 +1,222 @@
+===============================================================================
+                    libBICOS Installation Guide
+===============================================================================
+
+This document provides detailed instructions for building and installing libBICOS
+on both Windows and Linux systems. The library has been simplified to use CMake
+as the build system and reduce external dependencies.
+
+===============================================================================
+                    Prerequisites
+===============================================================================
+
+For all platforms:
+- CMake 3.10 or higher
+- OpenCV 4.x
+- C++17 compatible compiler
+
+For Windows:
+- Visual Studio 2019 or newer (with C++ desktop development workload)
+- Git for Windows (optional, for source code management)
+
+For Linux:
+- GCC 7.0 or higher
+- Build essentials (make, etc.)
+
+For CUDA support (optional):
+- CUDA Toolkit 10.0 or higher
+- Compatible NVIDIA GPU
+
+===============================================================================
+                    Building on Windows
+===============================================================================
+
+1. Install Dependencies
+   ------------------
+   a. Install CMake:
+      - Download and install from https://cmake.org/download/
+      - Make sure to add CMake to your PATH during installation
+
+   b. Install OpenCV:
+      - Download pre-built binaries from https://opencv.org/releases/
+      - Extract to a location (e.g., C:\opencv)
+      - Add the bin directory to your PATH (e.g., C:\opencv\build\x64\vc15\bin)
+      - Set an environment variable OPENCV_DIR pointing to the build directory
+        (e.g., C:\opencv\build)
+
+2. Build libBICOS
+   -------------
+   a. Open Command Prompt or PowerShell
+   
+   b. Navigate to the libBICOS directory:
+      > cd path\to\libBICOS
+   
+   c. Create a build directory and navigate to it:
+      > mkdir build
+      > cd build
+   
+   d. Generate Visual Studio solution:
+      > cmake .. -G "Visual Studio 16 2019" -A x64 -DBICOS_IMPLEMENTATION=CPU
+      
+      For CUDA support (uses pre-generated CUDA source, no cog required):
+      > cmake .. -G "Visual Studio 16 2019" -A x64 -DBICOS_IMPLEMENTATION=CUDA
+   
+   e. Build the library:
+      > cmake --build . --config Release
+   
+   f. Install the library (optional):
+      > cmake --install . --prefix C:\path\to\install
+
+3. Install Python Bindings
+   ---------------------
+   a. Make sure Python is installed (3.6 or newer recommended)
+   
+   b. Install the Python package:
+      > cd path\to\libBICOS
+      > pip install .
+      
+      This will build the C++ library and install the Python package.
+
+===============================================================================
+                    Building on Linux
+===============================================================================
+
+1. Install Dependencies
+   ------------------
+   a. Install CMake and build tools:
+      $ sudo apt update
+      $ sudo apt install cmake build-essential
+   
+   b. Install OpenCV:
+      # For CPU-only usage:
+      $ sudo apt install libopencv-dev
+
+      # For CUDA-enabled usage (build from source):
+      $ git clone https://github.com/opencv/opencv.git
+      $ cd opencv && mkdir build && cd build
+      $ cmake .. -DCMAKE_BUILD_TYPE=Release \
+        -DWITH_CUDA=ON \
+        -DBUILD_SHARED_LIBS=ON \
+        -DCUDA_ARCH_BIN=<your_cuda_arch> \
+        -DBUILD_EXAMPLES=OFF
+      $ make -j4
+      $ sudo make install
+
+2. Build libBICOS
+   -------------
+   a. Navigate to the libBICOS directory:
+      $ cd path/to/libBICOS
+   
+   b. Create a build directory and navigate to it:
+      $ mkdir build
+      $ cd build
+   
+   c. Generate Makefiles:
+      $ cmake .. -DCMAKE_BUILD_TYPE=Release -DBICOS_IMPLEMENTATION=CPU
+      
+      For CUDA support (uses pre-generated CUDA source, no cog required):
+      $ cmake .. -DCMAKE_BUILD_TYPE=Release -DBICOS_IMPLEMENTATION=CUDA
+   
+   d. Build the library:
+      $ make -j4
+   
+   e. Install the library (optional):
+      $ sudo make install
+
+3. Install Python Bindings
+   ---------------------
+   a. Make sure Python is installed with development headers:
+      $ sudo apt install python3-dev python3-pip
+   
+   b. Install the Python package:
+      $ cd path/to/libBICOS
+      $ pip3 install .
+      
+      This will build the C++ library and install the Python package.
+
+===============================================================================
+                    Using libBICOS in Your Projects
+===============================================================================
+
+1. CMake Projects
+   -------------
+   After installing libBICOS, you can use it in your CMake projects:
+
+   ```cmake
+   find_package(BICOS REQUIRED)
+   add_executable(my_app main.cpp)
+   target_link_libraries(my_app PRIVATE BICOS)
+   ```
+
+2. Python Usage
+   -----------
+   After installing the Python package, you can use it in your Python code:
+
+   ```python
+   import numpy as np
+   import pybicos
+   
+   # Create image stacks (list of numpy arrays)
+   stack0 = [np.array(...), np.array(...)]
+   stack1 = [np.array(...), np.array(...)]
+   
+   # Create configuration
+   cfg = pybicos.Config()
+   cfg.nxcorr_threshold = 0.6
+   cfg.mode = pybicos.TransformMode.LIMITED
+   
+   # Perform matching
+   disparity, corrmap = pybicos.match(stack0, stack1, cfg)
+   ```
+
+===============================================================================
+                    Troubleshooting
+===============================================================================
+
+1. Windows-specific Issues
+   ---------------------
+   - If you get "DLL not found" errors when using Python bindings, ensure that
+     the OpenCV DLLs are in your PATH or in the same directory as the Python
+     module.
+   
+   - For Visual Studio builds, make sure to use the correct configuration
+     (Debug/Release) that matches your application.
+
+2. Linux-specific Issues
+   ------------------
+   - If you get "library not found" errors, run `sudo ldconfig` after
+     installation to update the library cache.
+   
+   - Ensure that the installed libraries are in your LD_LIBRARY_PATH or in a
+     standard location (/usr/local/lib).
+
+3. CUDA Issues
+   ---------
+   - Make sure your NVIDIA drivers are up-to-date and compatible with your
+     CUDA toolkit version.
+   
+   - Check that the CUDA compute capability of your GPU is supported by the
+     CUDA toolkit version you're using.
+
+===============================================================================
+                    Notes on Changes from Original Version
+===============================================================================
+
+1. Build System Changes
+   -----------------
+   - Switched from Meson to CMake for better cross-platform support
+   - Simplified build configuration options
+
+2. Dependency Changes
+   ---------------
+   - Removed fmt library dependency, using standard C++ libraries instead
+   - Changed Python bindings from pybind11 to ctypes for easier deployment
+
+3. Python Interface
+   -------------
+   - The Python API is designed to be compatible with the original pybind11
+     interface, but there might be minor differences
+   - The ctypes-based interface provides better cross-platform compatibility
+     and easier deployment on Windows
+
+===============================================================================

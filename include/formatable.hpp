@@ -20,41 +20,50 @@
 
 #include "common.hpp"
 
-#include <fmt/format.h>
-#include <fmt/std.h>
-
 #include <bitset>
 #include <opencv2/core.hpp>
+#include <sstream>
+#include <string>
 
-template<>
-struct fmt::formatter<cv::Size>: formatter<string_view> {
-    auto format(const cv::Size& sz, format_context& ctx) const -> format_context::iterator;
-};
-
-template<size_t N>
-struct fmt::formatter<std::bitset<N>>: formatter<string_view> {
-    auto format(const std::bitset<N>& set, format_context& ctx) const -> format_context::iterator {
-        return format_to(ctx.out(), "{}", set.to_string());
-    }
-};
-
+// String formatting utilities to replace fmt library
 namespace BICOS {
 
+// Helper function to convert any type to string using stringstream
+template<typename T>
+std::string to_string(const T& value) {
+    std::stringstream ss;
+    ss << value;
+    return ss.str();
+}
+
+// Specialization for cv::Size
+inline std::string to_string(const cv::Size& sz) {
+    std::stringstream ss;
+    ss << "(" << sz.height << ", " << sz.width << ")";
+    return ss.str();
+}
+
+// Specialization for std::bitset
+template<size_t N>
+std::string to_string(const std::bitset<N>& set) {
+    return set.to_string();
+}
+
 namespace Variant {
-    inline auto format_as(const Consistency& c) {
-        return fmt::format(
-            "Consistency( max_lr_diff = {}, no_dupes = {} )",
-            c.max_lr_diff,
-            c.no_dupes
-        );
+    inline std::string format_as(const Consistency& c) {
+        std::stringstream ss;
+        ss << "Consistency( max_lr_diff = " << c.max_lr_diff 
+           << ", no_dupes = " << (c.no_dupes ? "true" : "false") << " )";
+        return ss.str();
     }
-    constexpr auto format_as(const NoDuplicates&) {
+    
+    inline std::string format_as(const NoDuplicates&) {
         return "NoDuplicates";
     }
 } // namespace Variant
 
 #ifdef BICOS_CUDA
-constexpr auto format_as(const Precision& p) {
+inline std::string format_as(const Precision& p) {
     switch (p) {
         case Precision::SINGLE:
             return "Single";
@@ -66,7 +75,7 @@ constexpr auto format_as(const Precision& p) {
 }
 #endif
 
-constexpr auto format_as(const TransformMode& m) {
+inline std::string format_as(const TransformMode& m) {
     switch (m) {
         case TransformMode::LIMITED:
             return "Limited";
@@ -77,29 +86,26 @@ constexpr auto format_as(const TransformMode& m) {
     }
 }
 
-inline auto format_as(const Config& c) {
-    constexpr static const char* format =
-        "Config( "
-        "nxcorr_threshold = {}, "
-        "subpixel_step = {}, "
-        "min_variance = {}, "
-        "mode = {}, "
+inline std::string format_as(const Config& c) {
+    std::stringstream ss;
+    ss << "Config( "
+       << "nxcorr_threshold = " << (c.nxcorr_threshold ? to_string(*c.nxcorr_threshold) : "null") << ", "
+       << "subpixel_step = " << (c.subpixel_step ? to_string(*c.subpixel_step) : "null") << ", "
+       << "min_variance = " << (c.min_variance ? to_string(*c.min_variance) : "null") << ", "
+       << "mode = " << format_as(c.mode) << ", ";
+       
 #ifdef BICOS_CUDA
-        "precision = {}, "
+    ss << "precision = " << format_as(c.precision) << ", ";
 #endif
-        "variant = {} "
-        ")";
-    return fmt::format(
-        format,
-        c.nxcorr_threshold,
-        c.subpixel_step,
-        c.min_variance,
-        c.mode,
-#ifdef BICOS_CUDA
-        c.precision,
-#endif
-        c.variant
-    );
+
+    if (std::holds_alternative<Variant::NoDuplicates>(c.variant)) {
+        ss << "variant = " << format_as(std::get<Variant::NoDuplicates>(c.variant));
+    } else if (std::holds_alternative<Variant::Consistency>(c.variant)) {
+        ss << "variant = " << format_as(std::get<Variant::Consistency>(c.variant));
+    }
+    
+    ss << " )";
+    return ss.str();
 }
 
 } // namespace BICOS

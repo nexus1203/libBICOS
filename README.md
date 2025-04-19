@@ -1,7 +1,7 @@
 # libBICOS
 
 BInary COrrespondence Search for multi-shot stereo imaging, with optional CUDA acceleration.
-
+Fork modified..
 ## Citing:
 
 This is the implementation of the [corresponding paper](https://isprs-archives.copernicus.org/articles/XLVIII-2-W7-2024/57/2024/isprs-archives-XLVIII-2-W7-2024-57-2024.pdf) which appeared in [Optical 3D Metrology 2024](https://o3dm.fbk.eu):
@@ -17,28 +17,37 @@ This is the implementation of the [corresponding paper](https://isprs-archives.c
 }
 ```
 
-## Build:
+## Build and Installation
 
-Dependencies:
-
-- `gcc` or equivalent C compiler with C++17 support (build)
-- [`meson`](https://github.com/mesonbuild/meson) >= 1.1.0 (build)
-- `opencv 4.x` with cuda support
-- `cuda 12.x` including toolkit
-- [`cog`](https://pypi.org/project/cogapp/) (build, cuda, for generating sources)
-- [`benchmark`](https://github.com/google/benchmark) (optional, for executing benchmarks)
+The build system has been switched to CMake, eliminating Meson, cog, and Google Benchmark as dependencies. You now only need:
+- CMake 3.10 or higher
+- A C++17-compatible compiler (GCC ≥7.0, Visual Studio 2019+, or clang)
+- OpenCV 4.x (CUDA-enabled for GPU builds)
+- (Optional) NVIDIA CUDA Toolkit 10.0 or higher
 
 ```bash
-# recommended: clone the most recent release
-$ git clone --depth 1 --branch v2.2.0 https://github.com/JMUWRobotics/libBICOS
-$ cd libBICOS
+# Clone the latest release
+git clone --depth 1 --branch v2.2.0 https://github.com/nexus1203/libBICOS
+cd libBICOS
 
-$ meson setup builddir --buildtype release
+# Create and enter build directory
+mkdir build && cd build
 
-# optional but recommended if you have access to a CUDA-capable GPU
-$ meson configure -Dimplementation=cuda builddir
+# CPU-only build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBICOS_IMPLEMENTATION=CPU
+# For CUDA acceleration
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBICOS_IMPLEMENTATION=CUDA
 
-$ meson install -C builddir
+# Compile
+make -j$(nproc)
+
+# (Optional) Install to system
+sudo make install
+
+# Install Python bindings
+cd ..
+pip install .      # regular install
+pip install -e .   # editable install
 ```
 
 The versioning scheme of the library is [Semantic Versioning](https://semver.org/).
@@ -49,7 +58,7 @@ The versioning scheme of the library is [Semantic Versioning](https://semver.org
 After installing, you can include `/usr/local/include/BICOS/*` and link against `/usr/local/lib/libBICOS.so`.
 
 ### Python module
-With an available python installation, meson will build a (somewhat experimental) python module `pybicos`. It is a wrapper around the C++ API for more convenient experimentation:
+With an available python installation, CMake will build a (somewhat experimental) python module `pybicos`. It is a wrapper around the C++ API for more convenient experimentation:
 ```python
 import pybicos
 import cv2 as cv
@@ -89,10 +98,12 @@ The most significant parameters can be summarized:
 
 Other settings are available; Try `bicos-cli -h` for details.
 
-## Benchmarking:
+## Benchmarking
 
-```console
-$ meson test --benchmark -C builddir --interactive
+After building the project:
+```bash
+# From the build directory:
+ctest -C Release --verbose
 ```
 
 ## Light projection:

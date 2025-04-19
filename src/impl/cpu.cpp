@@ -24,8 +24,6 @@
 
 #include "cpu.hpp"
 
-#include <fmt/core.h>
-
 #include "impl/cpu/agree.hpp"
 #include "impl/cpu/bicos.hpp"
 #include "impl/cpu/descriptor_transform.hpp"
@@ -83,11 +81,17 @@ static void match_impl(
         }
 
         if (step.has_value()) {
+            // subpixel: already returns float pixel values
             cv::Mat_<float> floatdisp;
             agree_subpixel<TInput>(out, stack0, stack1, n, min_nxc.value(), step.value(), min_var, floatdisp, corrmap);
             out = floatdisp;
-        } else
+        } else {
+            // integer: convert int16 disparity to float pixel values
             agree<TInput>(out, stack0, stack1, n, min_nxc.value(), min_var, corrmap);
+            cv::Mat_<float> floatdisp;
+            out.convertTo(floatdisp, CV_32F);
+            out = floatdisp;
+        }
     }
 
     // clang-format on
@@ -148,7 +152,7 @@ void match(
                 match_impl<uint16_t, std::bitset<256>>(stack0, stack1, cfg.nxcorr_threshold, cfg.subpixel_step, min_var, cfg.variant, cfg.mode, size, n, disparity, corrmap);
             break;
         default:
-            throw std::invalid_argument(fmt::format("input stacks too large, would require {} bits", required_bits));
+            throw std::invalid_argument("input stacks too large, would require " + std::to_string(required_bits) + " bits");
     }
 
     // clang-format on

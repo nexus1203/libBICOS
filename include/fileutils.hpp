@@ -23,7 +23,6 @@
 #include <filesystem>
 #include <iostream>
 #include <fstream>
-#include <fmt/std.h>
 
 #include <opencv2/core.hpp>
 #include <opencv2/core/cuda.hpp>
@@ -82,11 +81,11 @@ void save_pointcloud(
     xyz.flush();
     xyz.close();
 
-    fmt::println("Saved pointcloud in ascii-format to\t{}", outfile);
+    std::cout << "Saved pointcloud in ascii-format to\t" << outfile << std::endl;
     if (n_nonfinite > 0)
-        fmt::println(stderr, "Skipped {} points with non-finite fp values", n_nonfinite);
+        std::cerr << "Skipped " << n_nonfinite << " points with non-finite fp values" << std::endl;
     if (n_negative_z > 0)
-        fmt::println(stderr, "Skipped {} points with negative Z values", n_negative_z);
+        std::cerr << "Skipped " << n_negative_z << " points with negative Z values" << std::endl;
 }
 
 void save_image(const cv::Mat& image, std::filesystem::path outfile, cv::ColormapTypes cmap = cv::COLORMAP_TURBO);

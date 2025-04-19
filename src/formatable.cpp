@@ -18,7 +18,4 @@
 
 #include "formatable.hpp"
 
-auto fmt::formatter<cv::Size>::format(const cv::Size& sz, format_context& ctx) const
-    -> format_context::iterator {
-    return format_to(ctx.out(), "({}, {})", sz.height, sz.width);
-}
+// Implementation moved to header file as inline functions
