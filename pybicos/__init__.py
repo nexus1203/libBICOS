@@ -63,20 +63,20 @@ class BicosResult(ctypes.Structure):
     ]
 
 # Function prototypes
-_lib.BICOS_CreateDefaultConfig.restype  = ctypes.POINTER(BicosConfig)
-_lib.BICOS_FreeConfig.argtypes         = [ctypes.POINTER(BicosConfig)]
-_lib.BICOS_FreeResult.argtypes         = [ctypes.POINTER(BicosResult)]
-_lib.BICOS_Match.argtypes              = [
+_lib.BICOS_CreateDefaultConfig.restype = ctypes.POINTER(BicosConfig)
+_lib.BICOS_FreeConfig.argtypes = [ctypes.POINTER(BicosConfig)]
+_lib.BICOS_FreeResult.argtypes = [ctypes.POINTER(BicosResult)]
+_lib.BICOS_Match.argtypes = [
     ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int), ctypes.c_int,
     ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int), ctypes.c_int,
     ctypes.POINTER(BicosConfig)
 ]
-_lib.BICOS_Match.restype               = ctypes.POINTER(BicosResult)
+_lib.BICOS_Match.restype = ctypes.POINTER(BicosResult)
 _lib.BICOS_InvalidDisparityFloat.restype = ctypes.c_float
 _lib.BICOS_InvalidDisparityInt16.restype = ctypes.c_int16
 
 # OpenCV type constants
-CV_8U  = 0
+CV_8U = 0
 CV_16U = 2
 CV_16S = 3
 CV_32F = 5
@@ -199,7 +199,54 @@ class Config:
 def match(stack0, stack1, cfg=None):
     if not stack0 or not stack1:
         raise ValueError("Empty image stacks")
-    # prepare pointers, arrays, call into C API
-    return _lib.BICOS_Match(
-        # ... fill args appropriately
+    if cfg is None:
+        cfg = Config()
+    stack0_data = (ctypes.c_void_p * len(stack0))()
+    stack0_rows = (ctypes.c_int * len(stack0))()
+    stack0_cols = (ctypes.c_int * len(stack0))()
+    stack0_types = (ctypes.c_int * len(stack0))()
+    for i, img in enumerate(stack0):
+        if not img.flags['C_CONTIGUOUS']:
+            img = np.ascontiguousarray(img)
+        stack0_data[i] = img.ctypes.data_as(ctypes.c_void_p)
+        stack0_rows[i] = img.shape[0]
+        stack0_cols[i] = img.shape[1]
+        stack0_types[i] = _get_cv_type(img.dtype)
+    stack1_data = (ctypes.c_void_p * len(stack1))()
+    stack1_rows = (ctypes.c_int * len(stack1))()
+    stack1_cols = (ctypes.c_int * len(stack1))()
+    stack1_types = (ctypes.c_int * len(stack1))()
+    for i, img in enumerate(stack1):
+        if not img.flags['C_CONTIGUOUS']:
+            img = np.ascontiguousarray(img)
+        stack1_data[i] = img.ctypes.data_as(ctypes.c_void_p)
+        stack1_rows[i] = img.shape[0]
+        stack1_cols[i] = img.shape[1]
+        stack1_types[i] = _get_cv_type(img.dtype)
+    result = _lib.BICOS_Match(
+        stack0_data, stack0_rows, stack0_cols, stack0_types, len(stack0),
+        stack1_data, stack1_rows, stack1_cols, stack1_types, len(stack1),
+        cfg._c_config
     )
+    if not result:
+        raise RuntimeError("BICOS matching failed")
+    disparity_shape = (result.contents.disparity_rows, result.contents.disparity_cols)
+    disparity_dtype = _get_np_dtype(result.contents.disparity_type)
+    disparity_size = disparity_shape[0] * disparity_shape[1] * np.dtype(disparity_dtype).itemsize
+    disparity_buffer = (ctypes.c_byte * disparity_size).from_address(result.contents.disparity_data)
+    disparity = np.frombuffer(disparity_buffer, dtype=disparity_dtype).reshape(disparity_shape).copy()
+    corrmap_shape = (result.contents.corrmap_rows, result.contents.corrmap_cols)
+    corrmap_dtype = _get_np_dtype(result.contents.corrmap_type)
+    corrmap_size = corrmap_shape[0] * corrmap_shape[1] * np.dtype(corrmap_dtype).itemsize
+    corrmap_buffer = (ctypes.c_byte * corrmap_size).from_address(result.contents.corrmap_data)
+    corrmap = np.frombuffer(corrmap_buffer, dtype=corrmap_dtype).reshape(corrmap_shape).copy()
+    _lib.BICOS_FreeResult(result)
+    return disparity, corrmap
+
+def invalid_disparity(dtype):
+    if dtype == np.float32:
+        return _lib.BICOS_InvalidDisparityFloat()
+    elif dtype == np.int16:
+        return _lib.BICOS_InvalidDisparityInt16()
+    else:
+        raise ValueError(f"Unsupported dtype for invalid_disparity: {dtype}")
