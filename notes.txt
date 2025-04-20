@@ -92,15 +92,39 @@ For CUDA support (optional):
       $ sudo apt install libopencv-dev
 
       # For CUDA-enabled usage (build from source):
-      $ git clone https://github.com/opencv/opencv.git
+      $ sudo apt install pkg-config
+      $ sudo apt install -y cmake build-essential \
+         libgtk-3-dev libtbb-dev libjpeg-dev libpng-dev libtiff-dev \
+         libavcodec-dev libavformat-dev libswscale-dev \
+         libv4l-dev libxvidcore-dev libx264-dev \
+         libopenblas-dev libatlas-base-dev liblapack-dev gfortran \
+         libprotobuf-dev protobuf-compiler
+      $ git clone --branch 4.11.0 https://github.com/opencv/opencv.git
+      $ git clone --branch 4.11.0 https://github.com/opencv/opencv_contrib.git
+
       $ cd opencv && mkdir build && cd build
-      $ cmake .. -DCMAKE_BUILD_TYPE=Release \
-        -DWITH_CUDA=ON \
-        -DBUILD_SHARED_LIBS=ON \
-        -DCUDA_ARCH_BIN=<your_cuda_arch> \
-        -DBUILD_EXAMPLES=OFF
+      $ sudo rm -rf *
+      $ cmake .. \
+         -DCMAKE_BUILD_TYPE=Release \
+         -DCMAKE_INSTALL_PREFIX=/usr/local \
+         -DOPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules \
+         -DWITH_CUDA=ON \
+         -DCUDA_ARCH_BIN=86 \
+         -DWITH_CUDNN=ON \
+         -DWITH_TBB=OFF \
+         -DWITH_V4L=ON \
+         -DWITH_OPENGL=ON \
+         -DBUILD_opencv_python3=ON \
+         -DBUILD_SHARED_LIBS=ON \
+         -DOPENCV_GENERATE_PKGCONFIG=ON \
+         -DBUILD_EXAMPLES=OFF \
+         -DBUILD_TESTS=OFF \
+         -DBUILD_PERF_TESTS=OFF
       $ make -j4
       $ sudo make install
+      $  ls /usr/local/lib/pkgconfig/opencv4.pc
+      $  export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+      $  pkg-config --modversion opencv4
 
 2. Build libBICOS
    -------------
