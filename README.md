@@ -58,7 +58,7 @@ The versioning scheme of the library is [Semantic Versioning](https://semver.org
 After installing, you can include `/usr/local/include/BICOS/*` and link against `/usr/local/lib/libBICOS.so`.
 
 ### Python module
-With an available python installation, CMake will build a (somewhat experimental) python module `pybicos`. It is a wrapper around the C++ API for more convenient experimentation:
+With an available python installation, CMake will build a working ctype dll module `pybicos` that you can install with pip. It is a ctypes wrapper around the C++ API for more convenient experimentation:
 ```python
 import pybicos
 import cv2 as cv
