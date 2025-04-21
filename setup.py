@@ -64,7 +64,7 @@ class CustomBuild(build):
         os.makedirs(package_dir, exist_ok=True)
         
         # Copy __init__.py so package is importable from build directory
-        src_init = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pybicos_temp', '__init__.py')
+        src_init = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pybicos', '__init__.py')
         dst_init = os.path.join(package_dir, '__init__.py')
         shutil.copy(src_init, dst_init)
         
