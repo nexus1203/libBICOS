@@ -23,7 +23,7 @@ The build system has been switched to CMake, eliminating Meson, cog, and Google 
 - CMake 3.10 or higher
 - A C++17-compatible compiler (GCC ≥7.0, Visual Studio 2019+, or clang)
 - OpenCV 4.x (CUDA-enabled for GPU builds)
-- (Optional) NVIDIA CUDA Toolkit 10.0 or higher
+- (Optional) NVIDIA CUDA Toolkit 12.3 or higher ( the kernels uses newer primitives and calls)
 
 ```bash
 # Clone the latest release
